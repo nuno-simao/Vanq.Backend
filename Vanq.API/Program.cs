@@ -1,16 +1,16 @@
+using Scalar.AspNetCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-    app.MapOpenApi();
-}
+    options.WithTitle("Vanq API Reference");
+});
 
 app.UseHttpsRedirection();
 
@@ -18,6 +18,9 @@ var summaries = new[]
 {
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
 };
+
+app.MapGet("/", () => Results.Redirect("/scalar"))
+   .ExcludeFromDescription();
 
 app.MapGet("/weatherforecast", () =>
 {
