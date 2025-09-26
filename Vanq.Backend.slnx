@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Artefatos/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="Vanq.API/Vanq.API.csproj" />
+    <Project Path="Vanq.Application/Vanq.Application.csproj" Id="50db96bc-02a2-43c9-87bc-c7dc32b090b2" />
+    <Project Path="Vanq.Domain/Vanq.Domain.csproj" Id="95a42280-043a-457a-8948-554ea075eda3" />
+    <Project Path="Vanq.Infrastructure/Vanq.Infrastructure.csproj" Id="da8030ec-88f0-4d64-89df-6b6f350bfa20" />
+    <Project Path="Vanq.Shared/Vanq.Shared.csproj" Id="c9128662-60c5-4bc3-9b17-63b08394919d" />
+  </Folder>
+</Solution>
