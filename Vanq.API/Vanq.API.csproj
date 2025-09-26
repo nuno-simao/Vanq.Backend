@@ -7,12 +7,19 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0-rc.1.25451.107" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-rc.1.25451.107" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.OpenApi" Version="2.0.0" />
 		<PackageReference Include="Scalar.AspNetCore" Version="2.8.7" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\Vanq.Application\Vanq.Application.csproj" />
+		<ProjectReference Include="..\Vanq.Domain\Vanq.Domain.csproj" />
 		<ProjectReference Include="..\Vanq.Infrastructure\Vanq.Infrastructure.csproj" />
 		<ProjectReference Include="..\Vanq.Shared\Vanq.Shared.csproj" />
 	</ItemGroup>

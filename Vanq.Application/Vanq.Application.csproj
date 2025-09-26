@@ -9,6 +9,5 @@
 	<ItemGroup>
 		<ProjectReference Include="..\Vanq.Domain\Vanq.Domain.csproj" />
 		<ProjectReference Include="..\Vanq.Shared\Vanq.Shared.csproj" />
-		<ProjectReference Include="..\Vanq.Infrastructure\Vanq.Infrastructure.csproj" />
 	</ItemGroup>
 </Project>

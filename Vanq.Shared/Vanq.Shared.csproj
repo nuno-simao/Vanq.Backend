@@ -6,7 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\Vanq.Domain\Vanq.Domain.csproj" />
-	</ItemGroup>
 </Project>
