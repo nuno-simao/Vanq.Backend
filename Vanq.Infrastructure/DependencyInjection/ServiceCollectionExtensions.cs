@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Vanq.Application.Abstractions.Auth;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
+using Vanq.Infrastructure.Auth;
 using Vanq.Infrastructure.Auth.Jwt;
 using Vanq.Infrastructure.Auth.Password;
 using Vanq.Infrastructure.Auth.Tokens;
@@ -23,6 +24,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordHasher, BcryptPasswordHasher>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IAuthRefreshService, AuthRefreshService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 
         return services;
