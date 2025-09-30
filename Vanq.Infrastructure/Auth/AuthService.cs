@@ -1,31 +1,33 @@
 using System.Security.Claims;
-using Microsoft.EntityFrameworkCore;
 using Vanq.Application.Abstractions.Auth;
+using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Contracts.Auth;
 using Vanq.Domain.Entities;
-using Vanq.Infrastructure.Persistence;
 using Vanq.Shared.Security;
 
 namespace Vanq.Infrastructure.Auth;
 
 public sealed class AuthService : IAuthService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTimeProvider _clock;
 
     public AuthService(
-        AppDbContext dbContext,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
         IDateTimeProvider clock)
     {
-        _dbContext = dbContext;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
         _passwordHasher = passwordHasher;
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
@@ -36,7 +38,7 @@ public sealed class AuthService : IAuthService
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
-        var emailExists = await _dbContext.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken);
+        var emailExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
         if (emailExists)
         {
             return AuthResult<AuthResponseDto>.Failure(AuthError.EmailAlreadyInUse, "Email already registered");
@@ -45,8 +47,8 @@ public sealed class AuthService : IAuthService
         var passwordHash = _passwordHasher.Hash(request.Password);
         var user = User.Create(normalizedEmail, passwordHash, _clock.UtcNow);
 
-        await _dbContext.Users.AddAsync(user, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _userRepository.AddAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
@@ -57,7 +59,7 @@ public sealed class AuthService : IAuthService
     public async Task<AuthResult<AuthResponseDto>> LoginAsync(AuthRequestDto request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
 
         if (user is null)
         {

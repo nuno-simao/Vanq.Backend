@@ -2,13 +2,6 @@
   "version": 1,
   "isRoot": true,
   "tools": {
-    "dotnet-ef": {
-      "version": "9.0.9",
-      "commands": [
-        "dotnet-ef"
-      ],
-      "rollForward": false
-    },
     "dotnet-ildasm": {
       "version": "0.12.2",
       "commands": [

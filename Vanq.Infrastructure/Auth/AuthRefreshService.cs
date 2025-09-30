@@ -1,8 +1,7 @@
-using Microsoft.EntityFrameworkCore;
 using Vanq.Application.Abstractions.Auth;
+using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Contracts.Auth;
-using Vanq.Infrastructure.Persistence;
 
 namespace Vanq.Infrastructure.Auth;
 
@@ -10,16 +9,16 @@ public sealed class AuthRefreshService : IAuthRefreshService
 {
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly AppDbContext _dbContext;
+    private readonly IUserRepository _userRepository;
 
     public AuthRefreshService(
         IRefreshTokenService refreshTokenService,
         IJwtTokenService jwtTokenService,
-        AppDbContext dbContext)
+        IUserRepository userRepository)
     {
         _refreshTokenService = refreshTokenService;
         _jwtTokenService = jwtTokenService;
-        _dbContext = dbContext;
+        _userRepository = userRepository;
     }
 
     public async Task<AuthResult<AuthResponseDto>> RefreshAsync(RefreshTokenRequestDto request, CancellationToken cancellationToken)
@@ -27,7 +26,7 @@ public sealed class AuthRefreshService : IAuthRefreshService
         try
         {
             var (newRefreshToken, _, userId, securityStamp) = await _refreshTokenService.ValidateAndRotateAsync(request.RefreshToken, cancellationToken);
-            var user = await _dbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
 
             if (user is null)
             {

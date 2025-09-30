@@ -1,22 +1,30 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Domain.Entities;
 using Vanq.Infrastructure.Auth.Jwt;
-using Vanq.Infrastructure.Persistence;
 
 namespace Vanq.Infrastructure.Auth.Tokens;
 
 public class RefreshTokenService : IRefreshTokenService
 {
-    private readonly AppDbContext _dbContext;
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IUserRepository _userRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly JwtOptions _jwtOptions;
     private readonly IDateTimeProvider _clock;
 
-    public RefreshTokenService(AppDbContext dbContext, IOptions<JwtOptions> jwtOptions, IDateTimeProvider clock)
+    public RefreshTokenService(
+        IRefreshTokenRepository refreshTokenRepository,
+        IUserRepository userRepository,
+        IUnitOfWork unitOfWork,
+        IOptions<JwtOptions> jwtOptions,
+        IDateTimeProvider clock)
     {
-        _dbContext = dbContext;
+        _refreshTokenRepository = refreshTokenRepository;
+        _userRepository = userRepository;
+        _unitOfWork = unitOfWork;
         _jwtOptions = jwtOptions.Value;
         _clock = clock;
     }
@@ -27,8 +35,8 @@ public class RefreshTokenService : IRefreshTokenService
         var (plain, hash, expires) = RefreshTokenFactory.Create(_jwtOptions.RefreshTokenDays);
         var entity = RefreshToken.Issue(userId, hash, now, expires, securityStamp);
 
-        await _dbContext.RefreshTokens.AddAsync(entity, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _refreshTokenRepository.AddAsync(entity, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return (plain, expires);
     }
@@ -38,9 +46,7 @@ public class RefreshTokenService : IRefreshTokenService
         var now = _clock.UtcNow;
         var hash = RefreshTokenFactory.ComputeHash(plainRefreshToken);
 
-        var token = await _dbContext.RefreshTokens
-            .AsTracking()
-            .FirstOrDefaultAsync(t => t.TokenHash == hash, cancellationToken);
+        var token = await _refreshTokenRepository.GetByHashAsync(hash, cancellationToken, track: true);
 
         if (token is null)
         {
@@ -52,7 +58,7 @@ public class RefreshTokenService : IRefreshTokenService
             throw new UnauthorizedAccessException("Refresh token expired or revoked");
         }
 
-        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == token.UserId, cancellationToken);
+        var user = await _userRepository.GetByIdAsync(token.UserId, cancellationToken);
         if (user is null || !user.IsActive)
         {
             throw new UnauthorizedAccessException("User not found or inactive");
@@ -67,8 +73,9 @@ public class RefreshTokenService : IRefreshTokenService
         var replacement = RefreshToken.Issue(user.Id, newHash, now, newExpires, user.SecurityStamp);
         token.Revoke(replacedBy: newHash, nowUtc: now);
 
-        await _dbContext.RefreshTokens.AddAsync(replacement, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        await _refreshTokenRepository.AddAsync(replacement, cancellationToken);
+        _refreshTokenRepository.Update(token);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return (newPlain, newExpires, user.Id, user.SecurityStamp);
     }
@@ -78,9 +85,7 @@ public class RefreshTokenService : IRefreshTokenService
         var now = _clock.UtcNow;
         var hash = RefreshTokenFactory.ComputeHash(plainRefreshToken);
 
-        var token = await _dbContext.RefreshTokens
-            .AsTracking()
-            .FirstOrDefaultAsync(t => t.UserId == userId && t.TokenHash == hash, cancellationToken);
+        var token = await _refreshTokenRepository.GetByUserAndHashAsync(userId, hash, cancellationToken, track: true);
 
         if (token is null)
         {
@@ -88,6 +93,7 @@ public class RefreshTokenService : IRefreshTokenService
         }
 
         token.Revoke(nowUtc: now);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        _refreshTokenRepository.Update(token);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }

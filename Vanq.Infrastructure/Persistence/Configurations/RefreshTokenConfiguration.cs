@@ -17,10 +17,15 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.Property(x => x.SecurityStampSnapshot)
             .IsRequired();
 
+        builder.Property(x => x.CreatedAt)
+            .IsRequired();
+
         builder.HasIndex(x => new { x.UserId, x.TokenHash })
             .IsUnique();
 
         builder.HasIndex(x => x.ExpiresAt);
+
+        builder.HasIndex(x => new { x.UserId, x.CreatedAt });
 
         builder.HasOne<User>()
             .WithMany()
