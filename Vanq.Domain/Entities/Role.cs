@@ -1,13 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
+using Vanq.Shared;
+using Vanq.Shared.Security;
 
 namespace Vanq.Domain.Entities;
 
 public class Role
 {
-    private static readonly Regex NameRegex = new("^[a-z][a-z0-9-_]+$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-
     private readonly List<RolePermission> _permissions = new();
 
     public Guid Id { get; private set; }
@@ -40,16 +39,16 @@ public class Role
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
-        var normalizedName = NormalizeName(name);
-        ValidateName(normalizedName);
+        var normalizedName = StringNormalizationUtils.NormalizeName(name);
+        NamingValidationUtils.ValidateRoleName(normalizedName);
 
         return new Role(
             Guid.NewGuid(),
             normalizedName,
             displayName.Trim(),
-            NormalizeDescription(description),
+            StringNormalizationUtils.NormalizeDescription(description),
             isSystemRole,
-            Guid.NewGuid().ToString("N"),
+            SecurityStampUtils.Generate(),
             timestamp,
             timestamp);
     }
@@ -59,7 +58,7 @@ public class Role
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         DisplayName = displayName.Trim();
-        Description = NormalizeDescription(description);
+        Description = StringNormalizationUtils.NormalizeDescription(description);
         RotateSecurityStamp(timestamp);
     }
 
@@ -96,22 +95,7 @@ public class Role
 
     public void RotateSecurityStamp(DateTimeOffset timestamp)
     {
-        SecurityStamp = Guid.NewGuid().ToString("N");
+        SecurityStamp = SecurityStampUtils.Generate();
         UpdatedAt = timestamp;
-    }
-
-    private static string NormalizeName(string name) => name.Trim().ToLowerInvariant();
-
-    private static string? NormalizeDescription(string? description)
-    {
-        return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-    }
-
-    private static void ValidateName(string name)
-    {
-        if (!NameRegex.IsMatch(name))
-        {
-            throw new ArgumentException("Role name must match pattern ^[a-z][a-z0-9-_]+$", nameof(name));
-        }
     }
 }

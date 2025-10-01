@@ -6,6 +6,7 @@ using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Contracts.FeatureFlags;
 using Vanq.Domain.Entities;
+using Vanq.Shared;
 
 namespace Vanq.Infrastructure.FeatureFlags;
 
@@ -41,7 +42,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         var normalizedKey = key.ToLowerInvariant();
-        var cacheKey = GetCacheKey(normalizedKey);
+        var cacheKey = CacheKeyUtils.BuildFeatureFlagKey(_environment.EnvironmentName, normalizedKey);
 
         // Try cache first
         if (_cache.TryGetValue<bool>(cacheKey, out var cachedValue))
@@ -88,7 +89,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
 
         var normalizedKey = key.ToLowerInvariant();
-        var cacheKey = GetCacheKey(normalizedKey);
+        var cacheKey = CacheKeyUtils.BuildFeatureFlagKey(_environment.EnvironmentName, normalizedKey);
 
         // Try cache first
         if (_cache.TryGetValue<bool>(cacheKey, out var cachedValue))
@@ -319,14 +320,9 @@ internal sealed class FeatureFlagService : IFeatureFlagService
 
     private void InvalidateCache(string key)
     {
-        var cacheKey = GetCacheKey(key.ToLowerInvariant());
+        var cacheKey = CacheKeyUtils.BuildFeatureFlagKey(_environment.EnvironmentName, key.ToLowerInvariant());
         _cache.Remove(cacheKey);
         _logger.LogDebug("Cache invalidated for feature flag: {Key}", key);
-    }
-
-    private string GetCacheKey(string key)
-    {
-        return $"feature-flag:{_environment.EnvironmentName}:{key}";
     }
 
     private static FeatureFlagDto MapToDto(FeatureFlag flag)

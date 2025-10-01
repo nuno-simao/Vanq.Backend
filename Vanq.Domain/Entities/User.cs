@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
+using Vanq.Shared;
+using Vanq.Shared.Security;
 
 namespace Vanq.Domain.Entities;
 
@@ -33,8 +35,8 @@ public class User
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
         ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
 
-        var normalizedEmail = email.Trim().ToLowerInvariant();
-        return new User(Guid.NewGuid(), normalizedEmail, passwordHash, Guid.NewGuid().ToString("N"), nowUtc);
+        var normalizedEmail = StringNormalizationUtils.NormalizeEmail(email);
+        return new User(Guid.NewGuid(), normalizedEmail, passwordHash, SecurityStampUtils.Generate(), nowUtc);
     }
 
     public void SetPasswordHash(string newHash)
@@ -85,6 +87,6 @@ public class User
 
     private void RotateSecurityStamp()
     {
-        SecurityStamp = Guid.NewGuid().ToString("N");
+        SecurityStamp = SecurityStampUtils.Generate();
     }
 }

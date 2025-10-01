@@ -13,6 +13,7 @@ using Vanq.Application.Configuration;
 using Vanq.Application.Contracts.Auth;
 using Vanq.Domain.Entities;
 using Vanq.Infrastructure.Rbac;
+using Vanq.Shared;
 using Vanq.Shared.Security;
 
 namespace Vanq.Infrastructure.Auth;
@@ -56,7 +57,7 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterUserDto request, CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var normalizedEmail = StringNormalizationUtils.NormalizeEmail(request.Email);
 
         var emailExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
         if (emailExists)
@@ -85,7 +86,7 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResult<AuthResponseDto>> LoginAsync(AuthRequestDto request, CancellationToken cancellationToken)
     {
-        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var normalizedEmail = StringNormalizationUtils.NormalizeEmail(request.Email);
         var user = await _userRepository.GetByEmailWithRolesAsync(normalizedEmail, cancellationToken);
 
         if (user is null)
@@ -164,7 +165,7 @@ public sealed class AuthService : IAuthService
             return;
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         user.AssignRole(defaultRole.Id, Guid.Empty, timestamp);
     }
 
@@ -182,7 +183,7 @@ public sealed class AuthService : IAuthService
             return;
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         user.AssignRole(defaultRole.Id, Guid.Empty, timestamp);
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -200,7 +201,7 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
-        var normalized = _rbacOptions.DefaultRole.Trim().ToLowerInvariant();
+        var normalized = StringNormalizationUtils.NormalizeName(_rbacOptions.DefaultRole);
         return await _roleRepository.GetByNameWithPermissionsAsync(normalized, cancellationToken).ConfigureAwait(false);
     }
 

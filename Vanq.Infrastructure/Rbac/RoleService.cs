@@ -10,6 +10,7 @@ using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Contracts.Rbac;
 using Vanq.Domain.Entities;
+using Vanq.Shared;
 
 namespace Vanq.Infrastructure.Rbac;
 
@@ -72,16 +73,16 @@ internal sealed class RoleService : IRoleService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
-        var normalizedName = NormalizeName(request.Name);
+        var normalizedName = StringNormalizationUtils.NormalizeName(request.Name);
         var exists = await _roleRepository.ExistsByNameAsync(normalizedName, cancellationToken).ConfigureAwait(false);
         if (exists)
         {
             throw new InvalidOperationException($"Role '{normalizedName}' already exists.");
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         var role = Role.Create(normalizedName, request.DisplayName, request.Description, request.IsSystemRole, timestamp);
 
         var permissionIds = await ResolvePermissionsAsync(request.Permissions, cancellationToken).ConfigureAwait(false);
@@ -111,7 +112,7 @@ internal sealed class RoleService : IRoleService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
         var role = await _roleRepository.GetByIdWithPermissionsAsync(roleId, cancellationToken).ConfigureAwait(false);
         if (role is null)
@@ -119,7 +120,7 @@ internal sealed class RoleService : IRoleService
             throw new KeyNotFoundException("Role not found.");
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         role.UpdateDetails(request.DisplayName, request.Description, timestamp);
 
         var desiredPermissionIds = await ResolvePermissionsAsync(request.Permissions, cancellationToken).ConfigureAwait(false);
@@ -172,7 +173,7 @@ internal sealed class RoleService : IRoleService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
         var role = await _roleRepository.GetByIdWithPermissionsAsync(roleId, cancellationToken).ConfigureAwait(false);
         if (role is null)
@@ -222,20 +223,10 @@ internal sealed class RoleService : IRoleService
             permissions);
     }
 
-    private static string NormalizeName(string name) => name.Trim().ToLowerInvariant();
-
-    private static void EnsureExecutor(Guid executorId)
-    {
-        if (executorId == Guid.Empty)
-        {
-            throw new ArgumentException("Executor identifier is required.", nameof(executorId));
-        }
-    }
-
     private async Task<HashSet<Guid>> ResolvePermissionsAsync(IEnumerable<string> permissions, CancellationToken cancellationToken)
     {
         var desiredNames = permissions
-            .Select(name => name.Trim().ToLowerInvariant())
+            .Select(name => StringNormalizationUtils.NormalizeName(name))
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 

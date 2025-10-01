@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
-using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using Vanq.Shared.Security;
 
 namespace Vanq.Infrastructure.Auth.Tokens;
 
@@ -10,17 +10,12 @@ internal static class RefreshTokenFactory
     {
         var bytes = RandomNumberGenerator.GetBytes(64);
         var plain = Base64UrlEncoder.Encode(bytes);
-        var hash = ComputeHash(plain);
+        var hash = HashingUtils.ComputeSha256Hash(plain);
         return (plain, hash, DateTime.UtcNow.AddDays(days));
     }
 
     internal static string ComputeHash(string token)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(token);
-
-        using var sha = SHA256.Create();
-        var bytes = Encoding.UTF8.GetBytes(token);
-        var hashBytes = sha.ComputeHash(bytes);
-        return Convert.ToHexString(hashBytes);
+        return HashingUtils.ComputeSha256Hash(token);
     }
 }

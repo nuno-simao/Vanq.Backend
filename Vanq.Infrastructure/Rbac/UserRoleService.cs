@@ -11,6 +11,7 @@ using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Configuration;
 using Vanq.Domain.Entities;
+using Vanq.Shared;
 
 namespace Vanq.Infrastructure.Rbac;
 
@@ -44,7 +45,7 @@ internal sealed class UserRoleService : IUserRoleService
 
     public async Task AssignRoleAsync(Guid userId, Guid roleId, Guid executorId, CancellationToken cancellationToken)
     {
-        EnsureIdentifiers(userId, roleId, executorId);
+        GuidValidationUtils.EnsureAllNotEmpty(("userId", userId), ("roleId", roleId), ("executorId", executorId));
         if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             throw new RbacFeatureDisabledException();
@@ -61,7 +62,7 @@ internal sealed class UserRoleService : IUserRoleService
             return;
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         user.AssignRole(roleId, executorId, timestamp);
         _userRepository.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -71,7 +72,7 @@ internal sealed class UserRoleService : IUserRoleService
 
     public async Task RevokeRoleAsync(Guid userId, Guid roleId, Guid executorId, CancellationToken cancellationToken)
     {
-        EnsureIdentifiers(userId, roleId, executorId);
+        GuidValidationUtils.EnsureAllNotEmpty(("userId", userId), ("roleId", roleId), ("executorId", executorId));
         if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             throw new RbacFeatureDisabledException();
@@ -86,7 +87,7 @@ internal sealed class UserRoleService : IUserRoleService
             return;
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         user.RevokeRole(roleId, timestamp);
 
         if (!user.HasAnyActiveRole())
@@ -100,24 +101,6 @@ internal sealed class UserRoleService : IUserRoleService
         _logger.LogInformation("Role {RoleId} revoked from user {UserId} by {Executor}", roleId, userId, executorId);
     }
 
-    private static void EnsureIdentifiers(Guid userId, Guid roleId, Guid executorId)
-    {
-        if (userId == Guid.Empty)
-        {
-            throw new ArgumentException("User identifier is required.", nameof(userId));
-        }
-
-        if (roleId == Guid.Empty)
-        {
-            throw new ArgumentException("Role identifier is required.", nameof(roleId));
-        }
-
-        if (executorId == Guid.Empty)
-        {
-            throw new ArgumentException("Executor identifier is required.", nameof(executorId));
-        }
-    }
-
     private async Task AssignDefaultRoleAsync(User user, Guid executorId, DateTimeOffset timestamp, CancellationToken cancellationToken)
     {
         var defaultRoleName = _options.Value.DefaultRole;
@@ -126,7 +109,7 @@ internal sealed class UserRoleService : IUserRoleService
             throw new InvalidOperationException("Default role is not configured.");
         }
 
-        var normalizedName = defaultRoleName.Trim().ToLowerInvariant();
+        var normalizedName = StringNormalizationUtils.NormalizeName(defaultRoleName);
         var defaultRole = await _roleRepository.GetByNameAsync(normalizedName, cancellationToken).ConfigureAwait(false)
                           ?? throw new InvalidOperationException("Default role does not exist.");
 

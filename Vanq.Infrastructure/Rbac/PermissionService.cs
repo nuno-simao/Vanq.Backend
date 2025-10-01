@@ -10,6 +10,7 @@ using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Contracts.Rbac;
 using Vanq.Domain.Entities;
+using Vanq.Shared;
 
 namespace Vanq.Infrastructure.Rbac;
 
@@ -56,16 +57,16 @@ internal sealed class PermissionService : IPermissionService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
-        var normalizedName = NormalizeName(request.Name);
+        var normalizedName = StringNormalizationUtils.NormalizeName(request.Name);
         var exists = await _permissionRepository.ExistsByNameAsync(normalizedName, cancellationToken).ConfigureAwait(false);
         if (exists)
         {
             throw new InvalidOperationException($"Permission '{normalizedName}' already exists.");
         }
 
-        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        var timestamp = _clock.GetUtcDateTimeOffset();
         var permission = Permission.Create(normalizedName, request.DisplayName, request.Description, timestamp);
 
         await _permissionRepository.AddAsync(permission, cancellationToken).ConfigureAwait(false);
@@ -87,7 +88,7 @@ internal sealed class PermissionService : IPermissionService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
         var permission = await _permissionRepository.GetByIdAsync(permissionId, cancellationToken).ConfigureAwait(false);
         if (permission is null)
@@ -114,7 +115,7 @@ internal sealed class PermissionService : IPermissionService
         {
             throw new RbacFeatureDisabledException();
         }
-        EnsureExecutor(executorId);
+        GuidValidationUtils.EnsureExecutor(executorId);
 
         var permission = await _permissionRepository.GetByIdAsync(permissionId, cancellationToken).ConfigureAwait(false);
         if (permission is null)
@@ -131,16 +132,6 @@ internal sealed class PermissionService : IPermissionService
         _permissionRepository.Remove(permission);
         await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         _logger.LogInformation("Permission {Permission} deleted by {Executor}", permission.Name, executorId);
-    }
-
-    private static string NormalizeName(string name) => name.Trim().ToLowerInvariant();
-
-    private static void EnsureExecutor(Guid executorId)
-    {
-        if (executorId == Guid.Empty)
-        {
-            throw new ArgumentException("Executor identifier is required.", nameof(executorId));
-        }
     }
 
     private static PermissionDto MapToDto(Permission permission)

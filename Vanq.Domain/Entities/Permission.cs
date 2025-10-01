@@ -1,10 +1,9 @@
-using System.Text.RegularExpressions;
+using Vanq.Shared;
 
 namespace Vanq.Domain.Entities;
 
 public class Permission
 {
-    private static readonly Regex NameRegex = new("^[a-z][a-z0-9-]+:[a-z][a-z0-9-]+:[a-z][a-z0-9-]+(?::[a-z][a-z0-9-]+)?$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
     public Guid Id { get; private set; }
     public string Name { get; private set; } = null!;
     public string DisplayName { get; private set; } = null!;
@@ -27,14 +26,14 @@ public class Permission
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
-        var normalizedName = NormalizeName(name);
-        ValidateName(normalizedName);
+        var normalizedName = StringNormalizationUtils.NormalizeName(name);
+        NamingValidationUtils.ValidatePermissionName(normalizedName);
 
         return new Permission(
             Guid.NewGuid(),
             normalizedName,
             displayName.Trim(),
-            NormalizeDescription(description),
+            StringNormalizationUtils.NormalizeDescription(description),
             timestamp);
     }
 
@@ -43,21 +42,6 @@ public class Permission
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         DisplayName = displayName.Trim();
-        Description = NormalizeDescription(description);
-    }
-
-    private static string NormalizeName(string name) => name.Trim().ToLowerInvariant();
-
-    private static string? NormalizeDescription(string? description)
-    {
-        return string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-    }
-
-    private static void ValidateName(string name)
-    {
-        if (!NameRegex.IsMatch(name))
-        {
-            throw new ArgumentException("Permission name must match dominio:recurso:acao pattern", nameof(name));
-        }
+        Description = StringNormalizationUtils.NormalizeDescription(description);
     }
 }
