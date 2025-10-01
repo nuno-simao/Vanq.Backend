@@ -38,7 +38,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
         services.AddScoped<RbacSeeder>();
-        
+        services.AddScoped<FeatureFlagsSeeder>();
+
         // Feature Flags service (unified system)
         services.AddMemoryCache();
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();

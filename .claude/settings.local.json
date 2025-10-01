@@ -4,7 +4,11 @@
       "Bash(find:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(Enabled: {IsEnabled})",
+      "Bash(Environment: {Environment})",
+      "Bash(dotnet sln:*)"
     ],
     "deny": [],
     "ask": []

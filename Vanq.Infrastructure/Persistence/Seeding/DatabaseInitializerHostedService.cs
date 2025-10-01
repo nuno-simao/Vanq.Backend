@@ -49,8 +49,8 @@ internal sealed class DatabaseInitializerHostedService : IHostedService
         {
             var seedingStopwatch = Stopwatch.StartNew();
             _logger.LogInformation("Starting RBAC seed data initialization");
-            var seeder = scope.ServiceProvider.GetRequiredService<RbacSeeder>();
-            await seeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+            var rbacSeeder = scope.ServiceProvider.GetRequiredService<RbacSeeder>();
+            await rbacSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
             seedingStopwatch.Stop();
             _logger.LogPerformanceEvent("RbacSeeding", seedingStopwatch.ElapsedMilliseconds, threshold: 2000);
             _logger.LogInformation("RBAC seed data initialized successfully");
@@ -58,6 +58,22 @@ internal sealed class DatabaseInitializerHostedService : IHostedService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to seed RBAC data");
+            throw;
+        }
+
+        try
+        {
+            var featureFlagStopwatch = Stopwatch.StartNew();
+            _logger.LogInformation("Starting feature flags seed data initialization");
+            var featureFlagSeeder = scope.ServiceProvider.GetRequiredService<FeatureFlagsSeeder>();
+            await featureFlagSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+            featureFlagStopwatch.Stop();
+            _logger.LogPerformanceEvent("FeatureFlagsSeeding", featureFlagStopwatch.ElapsedMilliseconds, threshold: 1000);
+            _logger.LogInformation("Feature flags seed data initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed feature flags data");
             throw;
         }
 

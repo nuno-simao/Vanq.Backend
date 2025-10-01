@@ -10,6 +10,7 @@
     <Project Path="Vanq.Shared/Vanq.Shared.csproj" Id="c9128662-60c5-4bc3-9b17-63b08394919d" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Vanq.API.Tests/Vanq.API.Tests.csproj" />
     <Project Path="tests/Vanq.Infrastructure.Tests/Vanq.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

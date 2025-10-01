@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
 using Vanq.API.Endpoints;
+using Vanq.API.Middleware;
 using Vanq.API.OpenApi;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.FeatureFlags;
@@ -191,6 +192,9 @@ builder.Services
     builder.Services.AddSingleton<SensitiveDataRedactor>();
 
     var app = builder.Build();
+
+    // Add global exception handling (must be first)
+    app.UseMiddleware<GlobalExceptionMiddleware>();
 
     // Add request logging middleware
     app.UseMiddleware<RequestResponseLoggingMiddleware>();
