@@ -22,12 +22,16 @@ internal sealed class DatabaseInitializerHostedService : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Database initialization starting");
+
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         try
         {
+            _logger.LogInformation("Applying database migrations");
             await context.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("Database migrations applied successfully");
         }
         catch (Exception ex)
         {
@@ -35,8 +39,20 @@ internal sealed class DatabaseInitializerHostedService : IHostedService
             throw;
         }
 
-        var seeder = scope.ServiceProvider.GetRequiredService<RbacSeeder>();
-        await seeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            _logger.LogInformation("Starting RBAC seed data initialization");
+            var seeder = scope.ServiceProvider.GetRequiredService<RbacSeeder>();
+            await seeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogInformation("RBAC seed data initialized successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to seed RBAC data");
+            throw;
+        }
+
+        _logger.LogInformation("Database initialization completed");
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
