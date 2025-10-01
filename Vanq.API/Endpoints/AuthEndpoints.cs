@@ -14,9 +14,9 @@ namespace Vanq.API.Endpoints;
 
 public static class AuthEndpoints
 {
-    public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapAuthEndpoints(this RouteGroupBuilder apiRoute)
     {
-        RouteGroupBuilder group = app.MapGroup("/auth").WithTags("Auth");
+        RouteGroupBuilder group = apiRoute.MapGroup("/auth").WithTags("Auth");
 
         group.MapPost("/register", RegisterAsync)
             .AllowAnonymous()
@@ -56,7 +56,7 @@ public static class AuthEndpoints
         group.MapPermissionsEndpoints();
         group.MapUserRoleEndpoints();
 
-        return app;
+        return apiRoute;
     }
 
     private static async Task<IResult> RegisterAsync(

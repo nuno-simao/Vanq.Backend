@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Vanq.API.Endpoints;
 using Vanq.API.OpenApi;
 using Vanq.Application.Abstractions.Persistence;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Infrastructure.DependencyInjection;
 using Vanq.Infrastructure.Rbac;
@@ -76,8 +77,8 @@ builder.Services
                     return;
                 }
 
-                var rbacFeature = serviceProvider.GetRequiredService<IRbacFeatureManager>();
-                if (!rbacFeature.IsEnabled)
+                var featureFlagService = serviceProvider.GetRequiredService<IFeatureFlagService>();
+                if (!await featureFlagService.IsEnabledAsync("rbac-enabled"))
                 {
                     return;
                 }

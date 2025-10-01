@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Domain.Entities;
@@ -19,9 +20,9 @@ public class PermissionCheckerTests
         var user = User.Create("user@example.com", "hash", DateTime.UtcNow);
         var userId = user.Id;
         var repository = new StubUserRepository(user);
-        var featureManager = new StubFeatureManager(isEnabled: true);
+        var featureFlagService = new StubFeatureFlagService(isEnabled: true);
         var logger = new TestLogger<PermissionChecker>();
-        var checker = new PermissionChecker(repository, featureManager, logger);
+        var checker = new PermissionChecker(repository, featureFlagService, logger);
 
         // Act
         Func<Task> act = () => checker.EnsurePermissionAsync(userId, permission, CancellationToken.None);
@@ -59,9 +60,9 @@ public class PermissionCheckerTests
             .Invoke(userRole, new object?[] { role });
 
         var repository = new StubUserRepository(user);
-        var featureManager = new StubFeatureManager(isEnabled: true);
+        var featureFlagService = new StubFeatureFlagService(isEnabled: true);
         var logger = new TestLogger<PermissionChecker>();
-        var checker = new PermissionChecker(repository, featureManager, logger);
+        var checker = new PermissionChecker(repository, featureFlagService, logger);
 
         await checker.EnsurePermissionAsync(userId, permission, CancellationToken.None);
 
@@ -90,16 +91,41 @@ public class PermissionCheckerTests
         public void Update(User user) { }
     }
 
-    private sealed class StubFeatureManager : IRbacFeatureManager
+    private sealed class StubFeatureFlagService : IFeatureFlagService
     {
-        public StubFeatureManager(bool isEnabled)
+        private readonly bool _isEnabled;
+
+        public StubFeatureFlagService(bool isEnabled)
         {
-            IsEnabled = isEnabled;
+            _isEnabled = isEnabled;
         }
 
-        public bool IsEnabled { get; }
+        public Task<bool> IsEnabledAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_isEnabled);
 
-        public Task EnsureEnabledAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<bool> GetFlagOrDefaultAsync(string key, bool defaultValue = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult(defaultValue);
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> GetByKeyAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Application.Contracts.FeatureFlags.FeatureFlagDto?>(null);
+
+        public Task<List<Application.Contracts.FeatureFlags.FeatureFlagDto>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<Application.Contracts.FeatureFlags.FeatureFlagDto>());
+
+        public Task<List<Application.Contracts.FeatureFlags.FeatureFlagDto>> GetByEnvironmentAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<Application.Contracts.FeatureFlags.FeatureFlagDto>());
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto> CreateAsync(Application.Contracts.FeatureFlags.CreateFeatureFlagDto request, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> UpdateAsync(string key, Application.Contracts.FeatureFlags.UpdateFeatureFlagDto request, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> ToggleAsync(string key, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class TestLogger<T> : ILogger<T>

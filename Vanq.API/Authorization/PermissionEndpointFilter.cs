@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Shared.Security;
 
@@ -31,8 +32,8 @@ internal sealed class PermissionEndpointFilter : IEndpointFilter
             return TypedResults.Unauthorized();
         }
 
-        var featureManager = httpContext.RequestServices.GetRequiredService<IRbacFeatureManager>();
-        if (!featureManager.IsEnabled)
+        var featureFlagService = httpContext.RequestServices.GetRequiredService<IFeatureFlagService>();
+        if (!await featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             return await next(context);
         }

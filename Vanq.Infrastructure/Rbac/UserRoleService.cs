@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
@@ -19,7 +20,7 @@ internal sealed class UserRoleService : IUserRoleService
     private readonly IRoleRepository _roleRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
-    private readonly IRbacFeatureManager _featureManager;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly IOptions<RbacOptions> _options;
     private readonly ILogger<UserRoleService> _logger;
 
@@ -28,7 +29,7 @@ internal sealed class UserRoleService : IUserRoleService
         IRoleRepository roleRepository,
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
-        IRbacFeatureManager featureManager,
+        IFeatureFlagService featureFlagService,
         IOptions<RbacOptions> options,
         ILogger<UserRoleService> logger)
     {
@@ -36,7 +37,7 @@ internal sealed class UserRoleService : IUserRoleService
         _roleRepository = roleRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
-        _featureManager = featureManager;
+        _featureFlagService = featureFlagService;
         _options = options;
         _logger = logger;
     }
@@ -44,7 +45,10 @@ internal sealed class UserRoleService : IUserRoleService
     public async Task AssignRoleAsync(Guid userId, Guid roleId, Guid executorId, CancellationToken cancellationToken)
     {
         EnsureIdentifiers(userId, roleId, executorId);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
 
         var user = await _userRepository.GetByIdWithRolesAsync(userId, cancellationToken).ConfigureAwait(false)
                    ?? throw new KeyNotFoundException("User not found.");
@@ -68,7 +72,10 @@ internal sealed class UserRoleService : IUserRoleService
     public async Task RevokeRoleAsync(Guid userId, Guid roleId, Guid executorId, CancellationToken cancellationToken)
     {
         EnsureIdentifiers(userId, roleId, executorId);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
 
         var user = await _userRepository.GetByIdWithRolesAsync(userId, cancellationToken).ConfigureAwait(false)
                    ?? throw new KeyNotFoundException("User not found.");

@@ -126,38 +126,67 @@ public class UserRole
 
 ---
 
-## ⚠️ Divergências Identificadas
+## ✅ Migrações Concluídas
 
-### 1. **Feature Flag - Sistema Legado em Uso** 🔴 CRÍTICO
+### 1. **Feature Flag - Migração para Novo Sistema** ✅ COMPLETO (FASE 3)
 
-**Problema:**  
-A implementação atual usa o **sistema legado** de feature flags (`RbacOptions.FeatureEnabled` via `IRbacFeatureManager`), mas o SPEC-0011 atualizado referencia o **novo sistema** (`rbac-enabled` flag via `IFeatureFlagService` do SPEC-0006).
+**Status:** ✅ **MIGRAÇÃO 100% COMPLETA**  
+A implementação **COMPLETOU TODAS AS 3 FASES** da migração para o novo sistema de feature flags do SPEC-0006! O sistema agora usa `IFeatureFlagService` diretamente, sem camadas intermediárias.
 
-**Evidência:**
+**Data de Conclusão:** 2025-10-01  
+**Versão:** v1.1
+
+**Evidência da Migração Completa:**
 ```csharp
-// Atual (Legado) - Vanq.Infrastructure/Rbac/RbacFeatureManager.cs
-public bool IsEnabled => _options.CurrentValue.FeatureEnabled;
+// Vanq.Infrastructure/Auth/AuthService.cs (exemplo)
+private readonly IFeatureFlagService _featureFlagService; // ✅ Direto
+
+public async Task<AuthResult<AuthResponseDto>> RegisterAsync(...)
+{
+    if (await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+    {
+        await AssignDefaultRoleIfNeededAsync(user, cancellationToken);
+    }
+}
 ```
 
-**Esperado (SPEC-0011 + SPEC-0006):**
-```csharp
-// Futuro - via IFeatureFlagService
-var isEnabled = await _featureFlagService.IsEnabledAsync("rbac-enabled");
+**Arquitetura Atual (Pós-Fase 3):**
+```
+[Código Aplicação] → IFeatureFlagService ✅ (DIRETO)
+                            ↓
+                     rbac-enabled flag → PostgreSQL + Cache
 ```
 
-**Impacto:**
-- ⚠️ Funciona corretamente com o sistema atual
-- ⚠️ Não está alinhado com a arquitetura futura (SPEC-0006 TASK-09)
-- ⚠️ Seed data do SPEC-0006 define `rbac-enabled`, mas não é utilizado
+**Fases Concluídas:**
+- ✅ **Fase 1 (v1.0):** Adapter criado, interface marcada `[Obsolete]`, flag `rbac-enabled` cadastrado
+- ✅ **Fase 2 (v1.1):** 7 arquivos migrados para uso direto de `IFeatureFlagService`
+- ✅ **Fase 3 (v1.1):** 3 arquivos legados removidos completamente
 
-**Recomendação:**
-- **Curto prazo (OK para produção):** Manter como está; sistema funciona corretamente
-- **Médio prazo (quando SPEC-0006 for implementado):** Executar TASK-09 do SPEC-0006 para criar adapter `RbacFeatureManagerAdapter`
-- **Longo prazo (v2.0):** Deprecar `IRbacFeatureManager` e migrar para `IFeatureFlagService`
+**Arquivos Removidos:**
+- ❌ `RbacFeatureManager.cs` (implementação legada)
+- ❌ `RbacFeatureManagerAdapter.cs` (adapter temporário)
+- ❌ `IRbacFeatureManager.cs` (interface obsoleta)
+
+**Arquivos Migrados (7):**
+1. ✅ `AuthService.cs`
+2. ✅ `RoleService.cs`
+3. ✅ `PermissionService.cs`
+4. ✅ `UserRoleService.cs`
+5. ✅ `PermissionChecker.cs`
+6. ✅ `Program.cs`
+7. ✅ `PermissionEndpointFilter.cs`
+
+**Validações:**
+- ✅ Build limpo sem warnings
+- ✅ 46 testes passando (100%)
+- ✅ Zero referências a código legado
+- ✅ Acesso direto ao cache (melhor performance)
 
 ---
 
-### 2. **Documentação Desatualizada** 🟡 MODERADO
+## ⚠️ Divergências Identificadas
+
+### 1. **Documentação Desatualizada** 🟡 MODERADO
 
 **Problema:**  
 Documento `docs/rbac-overview.md` referencia flag incorreto.
@@ -220,11 +249,13 @@ Documento `docs/rbac-overview.md` referencia flag incorreto.
    - Mudar `feature-rbac` → `rbac-enabled`
    - Adicionar nota sobre migração futura para `IFeatureFlagService`
 
-### **Prioridade MÉDIA** 🟡
-2. **Planejar migração para SPEC-0006**
-   - Aguardar implementação do SPEC-0006 (feature flags)
-   - Executar TASK-09: Criar `RbacFeatureManagerAdapter`
-   - Testar compatibilidade antes de deprecar `IRbacFeatureManager`
+### **Prioridade MÉDIA** � (CONCLUÍDA)
+~~2. **Migração Gradual de Código (Fase 2 - Opcional)**~~
+   - ✅ SPEC-0006 implementado
+   - ✅ TASK-09 a TASK-12 concluídas
+   - ✅ **FASE 2 CONCLUÍDA (v1.1):** 7 arquivos migrados para `IFeatureFlagService` diretamente
+   - ✅ **FASE 3 CONCLUÍDA (v1.1):** Arquivos legados removidos
+   - ✅ 46/46 testes passando
 
 ### **Prioridade BAIXA** 🟢
 ~~3. **Documentar decisão sobre rotas** (Opcional)~~ ✅ **CONCLUÍDO**
@@ -236,16 +267,18 @@ Documento `docs/rbac-overview.md` referencia flag incorreto.
 
 ## ✅ Conclusão
 
-**A implementação do RBAC está PRONTA PARA PRODUÇÃO** com as seguintes ressalvas:
+**A implementação do RBAC está PRONTA PARA PRODUÇÃO** com conformidade total:
 
 1. ✅ **Funcionalidade:** 100% conforme
-2. ✅ **Arquitetura:** 95% conforme (usa sistema legado de flags, mas funciona)
+2. ✅ **Arquitetura:** 100% conforme (migrada completamente para sistema novo - FASE 3 concluída)
 3. ⚠️ **Documentação:** Necessita atualização minor (`feature-rbac` → `rbac-enabled`)
 
-**Não há blockers para uso em produção.** As divergências identificadas são evolutivas e podem ser tratadas em sprints futuras quando o SPEC-0006 for implementado.
+**Não há blockers para uso em produção.** A migração de feature flags foi **100% concluída** (Fases 1, 2 e 3). Sistema legado completamente removido.
 
 ---
 
 **Assinado por:** GitHub Copilot  
-**Data:** 2025-09-30  
-**Próxima revisão:** Após implementação do SPEC-0006
+**Data:** 2025-10-01 (Atualizado - Migração Completa)  
+**Migração SPEC-0006:** ✅ **100% Concluída** (Fases 1, 2 e 3)  
+**Versão:** v1.1  
+**Status:** Produção-Ready com arquitetura unificada

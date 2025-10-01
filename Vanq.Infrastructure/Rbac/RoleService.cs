@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
@@ -18,7 +19,7 @@ internal sealed class RoleService : IRoleService
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
-    private readonly IRbacFeatureManager _featureManager;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly ILogger<RoleService> _logger;
 
     public RoleService(
@@ -26,20 +27,23 @@ internal sealed class RoleService : IRoleService
         IPermissionRepository permissionRepository,
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
-        IRbacFeatureManager featureManager,
+        IFeatureFlagService featureFlagService,
         ILogger<RoleService> logger)
     {
         _roleRepository = roleRepository;
         _permissionRepository = permissionRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
-        _featureManager = featureManager;
+        _featureFlagService = featureFlagService;
         _logger = logger;
     }
 
     public async Task<IReadOnlyList<RoleDto>> GetAsync(CancellationToken cancellationToken)
     {
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
 
         var roles = await _roleRepository.GetAllWithPermissionsAsync(cancellationToken).ConfigureAwait(false);
         return roles.Select(MapToDto).ToList();
@@ -47,7 +51,10 @@ internal sealed class RoleService : IRoleService
 
     public async Task<RoleDto?> GetByIdAsync(Guid roleId, CancellationToken cancellationToken)
     {
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
 
         if (roleId == Guid.Empty)
         {
@@ -61,7 +68,10 @@ internal sealed class RoleService : IRoleService
     public async Task<RoleDto> CreateAsync(CreateRoleRequest request, Guid executorId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var normalizedName = NormalizeName(request.Name);
@@ -97,7 +107,10 @@ internal sealed class RoleService : IRoleService
         }
 
         ArgumentNullException.ThrowIfNull(request);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var role = await _roleRepository.GetByIdWithPermissionsAsync(roleId, cancellationToken).ConfigureAwait(false);
@@ -155,7 +168,10 @@ internal sealed class RoleService : IRoleService
             throw new ArgumentException("Role identifier is required.", nameof(roleId));
         }
 
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var role = await _roleRepository.GetByIdWithPermissionsAsync(roleId, cancellationToken).ConfigureAwait(false);

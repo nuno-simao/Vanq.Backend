@@ -5,8 +5,8 @@ using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Vanq.Application.Abstractions.Auth;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
-using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Configuration;
@@ -26,7 +26,7 @@ public sealed class AuthService : IAuthService
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTimeProvider _clock;
     private readonly IRoleRepository _roleRepository;
-    private readonly IRbacFeatureManager _rbacFeatureManager;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly RbacOptions _rbacOptions;
     private readonly ILogger<AuthService> _logger;
 
@@ -38,7 +38,7 @@ public sealed class AuthService : IAuthService
         IRefreshTokenService refreshTokenService,
         IDateTimeProvider clock,
         IRoleRepository roleRepository,
-        IRbacFeatureManager rbacFeatureManager,
+        IFeatureFlagService featureFlagService,
         IOptions<RbacOptions> rbacOptions,
         ILogger<AuthService> logger)
     {
@@ -49,7 +49,7 @@ public sealed class AuthService : IAuthService
         _refreshTokenService = refreshTokenService;
         _clock = clock;
         _roleRepository = roleRepository;
-        _rbacFeatureManager = rbacFeatureManager;
+        _featureFlagService = featureFlagService;
         _rbacOptions = rbacOptions.Value;
         _logger = logger;
     }
@@ -67,7 +67,7 @@ public sealed class AuthService : IAuthService
         var passwordHash = _passwordHasher.Hash(request.Password);
         var user = User.Create(normalizedEmail, passwordHash, _clock.UtcNow);
 
-        if (_rbacFeatureManager.IsEnabled)
+        if (await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             await AssignDefaultRoleIfNeededAsync(user, cancellationToken).ConfigureAwait(false);
         }
@@ -103,7 +103,7 @@ public sealed class AuthService : IAuthService
             return AuthResult<AuthResponseDto>.Failure(AuthError.UserInactive);
         }
 
-        if (_rbacFeatureManager.IsEnabled && !user.HasAnyActiveRole())
+        if (await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken) && !user.HasAnyActiveRole())
         {
             await AssignDefaultRoleToPersistedUserAsync(user, cancellationToken).ConfigureAwait(false);
             user = await _userRepository.GetByIdWithRolesAsync(user.Id, cancellationToken).ConfigureAwait(false) ?? user;
@@ -190,7 +190,7 @@ public sealed class AuthService : IAuthService
 
     private async Task<Role?> GetDefaultRoleAsync(CancellationToken cancellationToken)
     {
-        if (!_rbacFeatureManager.IsEnabled)
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             return null;
         }

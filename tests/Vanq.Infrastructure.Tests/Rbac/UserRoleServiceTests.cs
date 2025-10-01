@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
@@ -23,16 +24,16 @@ public class UserRoleServiceTests
         var userRepository = StubUserRepository.WithUser(user);
         var roleRepository = StubRoleRepository.WithRole(role);
         var unitOfWork = new StubUnitOfWork();
-        var featureManager = new StubFeatureManager();
+        var featureFlagService = new StubFeatureFlagService(isEnabled: true);
         var clock = new StubClock(DateTime.UtcNow);
         var options = Options.Create(new RbacOptions { DefaultRole = "viewer" });
-        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureManager, options);
+        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureFlagService, options);
 
         // Act
         await service.AssignRoleAsync(user.Id, role.Id, executorId, CancellationToken.None);
 
         // Assert
-        featureManager.EnsureCalled.Should().BeTrue();
+        featureFlagService.IsEnabledCallCount.Should().Be(1);
         userRepository.UpdateCallCount.Should().Be(1);
         unitOfWork.SaveChangesCallCount.Should().Be(1);
         user.HasActiveRole(role.Id).Should().BeTrue();
@@ -49,10 +50,10 @@ public class UserRoleServiceTests
         var userRepository = StubUserRepository.WithUser(user);
         var roleRepository = StubRoleRepository.WithRole(role);
         var unitOfWork = new StubUnitOfWork();
-        var featureManager = new StubFeatureManager();
+        var featureFlagService = new StubFeatureFlagService(isEnabled: true);
         var clock = new StubClock(DateTime.UtcNow);
         var options = Options.Create(new RbacOptions { DefaultRole = "viewer" });
-        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureManager, options);
+        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureFlagService, options);
 
         await service.AssignRoleAsync(user.Id, role.Id, executorId, CancellationToken.None);
 
@@ -79,10 +80,10 @@ public class UserRoleServiceTests
             RoleByName = defaultRole
         };
         var unitOfWork = new StubUnitOfWork();
-        var featureManager = new StubFeatureManager();
+        var featureFlagService = new StubFeatureFlagService(isEnabled: true);
         var clock = new StubClock(timestamp);
         var options = Options.Create(new RbacOptions { DefaultRole = defaultRole.Name });
-        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureManager, options);
+        var service = CreateService(userRepository, roleRepository, unitOfWork, clock, featureFlagService, options);
 
         await service.RevokeRoleAsync(user.Id, primaryRole.Id, executorId, CancellationToken.None);
 
@@ -97,7 +98,7 @@ public class UserRoleServiceTests
         StubRoleRepository roleRepository,
         StubUnitOfWork unitOfWork,
         IDateTimeProvider clock,
-        StubFeatureManager featureManager,
+        IFeatureFlagService featureFlagService,
         IOptions<RbacOptions> options)
     {
         return new UserRoleService(
@@ -105,7 +106,7 @@ public class UserRoleServiceTests
             roleRepository,
             unitOfWork,
             clock,
-            featureManager,
+            featureFlagService,
             options,
             NullLogger<UserRoleService>.Instance);
     }
@@ -176,16 +177,45 @@ public class UserRoleServiceTests
         public DateTime UtcNow { get; }
     }
 
-    private sealed class StubFeatureManager : IRbacFeatureManager
+    private sealed class StubFeatureFlagService : IFeatureFlagService
     {
-        public bool EnsureCalled { get; private set; }
+        private readonly bool _isEnabled;
 
-        public bool IsEnabled => true;
-
-        public Task EnsureEnabledAsync(CancellationToken cancellationToken)
+        public StubFeatureFlagService(bool isEnabled)
         {
-            EnsureCalled = true;
-            return Task.CompletedTask;
+            _isEnabled = isEnabled;
         }
+
+        public int IsEnabledCallCount { get; private set; }
+
+        public Task<bool> IsEnabledAsync(string key, CancellationToken cancellationToken = default)
+        {
+            IsEnabledCallCount++;
+            return Task.FromResult(_isEnabled);
+        }
+
+        public Task<bool> GetFlagOrDefaultAsync(string key, bool defaultValue = false, CancellationToken cancellationToken = default) =>
+            Task.FromResult(defaultValue);
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> GetByKeyAsync(string key, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Application.Contracts.FeatureFlags.FeatureFlagDto?>(null);
+
+        public Task<List<Application.Contracts.FeatureFlags.FeatureFlagDto>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<Application.Contracts.FeatureFlags.FeatureFlagDto>());
+
+        public Task<List<Application.Contracts.FeatureFlags.FeatureFlagDto>> GetByEnvironmentAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new List<Application.Contracts.FeatureFlags.FeatureFlagDto>());
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto> CreateAsync(Application.Contracts.FeatureFlags.CreateFeatureFlagDto request, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> UpdateAsync(string key, Application.Contracts.FeatureFlags.UpdateFeatureFlagDto request, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Application.Contracts.FeatureFlags.FeatureFlagDto?> ToggleAsync(string key, string? updatedBy = null, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

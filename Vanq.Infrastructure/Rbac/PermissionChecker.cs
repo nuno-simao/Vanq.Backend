@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 
@@ -12,17 +13,17 @@ namespace Vanq.Infrastructure.Rbac;
 internal sealed class PermissionChecker : IPermissionChecker
 {
     private readonly IUserRepository _userRepository;
-    private readonly IRbacFeatureManager _featureManager;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly ILogger<PermissionChecker> _logger;
     private readonly Dictionary<(Guid, string), bool> _cache = new();
 
     public PermissionChecker(
         IUserRepository userRepository,
-        IRbacFeatureManager featureManager,
+        IFeatureFlagService featureFlagService,
         ILogger<PermissionChecker> logger)
     {
         _userRepository = userRepository;
-        _featureManager = featureManager;
+        _featureFlagService = featureFlagService;
         _logger = logger;
     }
 
@@ -38,7 +39,7 @@ internal sealed class PermissionChecker : IPermissionChecker
             return false;
         }
 
-        if (!_featureManager.IsEnabled)
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
         {
             return true;
         }

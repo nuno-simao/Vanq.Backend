@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
@@ -17,26 +18,29 @@ internal sealed class PermissionService : IPermissionService
     private readonly IPermissionRepository _permissionRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IDateTimeProvider _clock;
-    private readonly IRbacFeatureManager _featureManager;
+    private readonly IFeatureFlagService _featureFlagService;
     private readonly ILogger<PermissionService> _logger;
 
     public PermissionService(
         IPermissionRepository permissionRepository,
         IUnitOfWork unitOfWork,
         IDateTimeProvider clock,
-        IRbacFeatureManager featureManager,
+        IFeatureFlagService featureFlagService,
         ILogger<PermissionService> logger)
     {
         _permissionRepository = permissionRepository;
         _unitOfWork = unitOfWork;
         _clock = clock;
-        _featureManager = featureManager;
+        _featureFlagService = featureFlagService;
         _logger = logger;
     }
 
     public async Task<IReadOnlyList<PermissionDto>> GetAsync(CancellationToken cancellationToken)
     {
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
 
         var permissions = await _permissionRepository.GetAllAsync(cancellationToken).ConfigureAwait(false);
         return permissions
@@ -48,7 +52,10 @@ internal sealed class PermissionService : IPermissionService
     public async Task<PermissionDto> CreateAsync(CreatePermissionRequest request, Guid executorId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var normalizedName = NormalizeName(request.Name);
@@ -76,7 +83,10 @@ internal sealed class PermissionService : IPermissionService
         }
 
         ArgumentNullException.ThrowIfNull(request);
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var permission = await _permissionRepository.GetByIdAsync(permissionId, cancellationToken).ConfigureAwait(false);
@@ -100,7 +110,10 @@ internal sealed class PermissionService : IPermissionService
             throw new ArgumentException("Permission identifier is required.", nameof(permissionId));
         }
 
-        await _featureManager.EnsureEnabledAsync(cancellationToken).ConfigureAwait(false);
+        if (!await _featureFlagService.IsEnabledAsync("rbac-enabled", cancellationToken))
+        {
+            throw new RbacFeatureDisabledException();
+        }
         EnsureExecutor(executorId);
 
         var permission = await _permissionRepository.GetByIdAsync(permissionId, cancellationToken).ConfigureAwait(false);
