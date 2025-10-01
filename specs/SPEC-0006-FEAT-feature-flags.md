@@ -2,14 +2,22 @@
 spec:
   id: SPEC-0006
   type: feature
-  version: 0.1.0
+  version: 0.2.0
   status: approved       # draft | reviewing | approved | deprecated
   owner: nuno-simao
   created: 2025-09-30
-  updated: 2025-09-30
+  updated: 2025-10-01
   priority: high
   quality_order: [reliability, delivery_speed, observability, performance, security, cost]
-  tags: [feature-flag, configuration, platform]
+  tags: [feature-flag, configuration, platform, rbac]
+  changelog:
+    - version: 0.2.0
+      date: 2025-10-01
+      changes: 
+        - Adicionados endpoints extras (API-04 a API-07) para toggle, delete, busca individual e filtragem por ambiente
+        - Atualizada autorização para usar permissões RBAC granulares (system:feature-flags:*) conforme SPEC-0011
+        - Adicionados REQ-09 e REQ-10 para novas funcionalidades
+        - Expandida documentação de segurança com detalhamento de permissões
 ---
 
 # 1. Objetivo
@@ -40,10 +48,12 @@ Disponibilizar um módulo de feature flags nativo, sem dependências externas, p
 | REQ-02 | Expor serviço `IFeatureFlagService` para consultar flag por chave com cache em memória. | MUST |
 | REQ-03 | Disponibilizar operação para criar/atualizar flag que persista em banco e invalide cache. | MUST |
 | REQ-04 | Suportar ambientes (ex.: Development, Staging, Production) permitindo valores diferentes por ambiente. | MUST |
-| REQ-05 | Disponibilizar endpoint/command seguro para gerenciar flags (list, update, toggle). | SHOULD |
+| REQ-05 | Disponibilizar endpoints seguros para gerenciar flags (list, create, update, toggle, delete). | SHOULD |
 | REQ-06 | Registrar eventos/logs estruturados ao alterar flag, incluindo usuário/responsável. | SHOULD |
 | REQ-07 | Permitir adicionar metadados simples (descrição, responsável, data atualização). | SHOULD |
 | REQ-08 | Oferecer método de verificação com fallback (`GetFlagOrDefaultAsync`) para evitar falhas quando flag não existe. | MAY |
+| REQ-09 | Disponibilizar endpoint de toggle para inversão rápida de estado sem payload completo. | MAY |
+| REQ-10 | Permitir filtragem de flags por ambiente (atual vs todos). | MAY |
 
 # 4. Requisitos Não Funcionais (Prioridades Relevantes)
 | ID | Categoria | Descrição | Métrica / Aceite |
@@ -85,19 +95,139 @@ Disponibilizar um módulo de feature flags nativo, sem dependências externas, p
 | Domain | Nova entidade `FeatureFlag` com invariantes (ex.: key/env). | Validar construtor.
 | Application | Interfaces `IFeatureFlagService`, `IFeatureFlagRepository`; DTOs para gestão. | Uso em serviços existentes.
 | Infrastructure | Nova tabela + repositório EF Core; configuração `FeatureFlagConfiguration`. | Cache via `IMemoryCache` ou custom; invalidar com eventos.
-| API | Endpoints administrativos (ex.: `/admin/feature-flags`) e middleware para resolver ambiente. | Autorizar via role.
+| API | Endpoints administrativos (ex.: `/api/admin/feature-flags`) e middleware para resolver ambiente. | Autorizar via role.
 
 # 8. API (Se aplicável)
-| ID | Método | Rota | Auth | REQs | Sucesso | Erros |
-|----|--------|------|------|------|---------|-------|
-| API-01 | GET | /admin/feature-flags | JWT + role admin | REQ-05 | 200 lista DTO | 401,403 |
-| API-02 | PUT | /admin/feature-flags/{key} | JWT + role admin | REQ-03,REQ-05 | 200 flag atualizado | 400,401,403,404 |
-| API-03 | POST | /admin/feature-flags | JWT + role admin | REQ-03,REQ-05 | 201 criado | 400,401,403,409 |
+
+**Base Path:** `/api/admin/feature-flags`
+
+**Nota:** Todos os endpoints requerem autenticação JWT e permissões RBAC apropriadas conforme DEC-03.
+
+| ID | Método | Rota | Permissão | REQs | Sucesso | Erros | Observações |
+|----|--------|------|-----------|------|---------|-------|-------------|
+| API-01 | GET | /api/admin/feature-flags | `system:feature-flags:read` | REQ-05 | 200 lista completa (todos ambientes) | 401,403 | Lista todos os flags cadastrados |
+| API-02 | PUT | /api/admin/feature-flags/{key} | `system:feature-flags:update` | REQ-03,REQ-05 | 200 flag atualizado | 400,401,403,404 | Atualiza flag do ambiente atual |
+| API-03 | POST | /api/admin/feature-flags | `system:feature-flags:create` | REQ-03,REQ-05 | 201 criado | 400,401,403,409 | Cria novo flag |
+| API-04 | GET | /api/admin/feature-flags/current | `system:feature-flags:read` | REQ-05 | 200 lista filtrada | 401,403 | Lista apenas flags do ambiente atual |
+| API-05 | GET | /api/admin/feature-flags/{key} | `system:feature-flags:read` | REQ-05 | 200 flag DTO | 401,403,404 | Busca flag específico por chave |
+| API-06 | POST | /api/admin/feature-flags/{key}/toggle | `system:feature-flags:update` | REQ-03,REQ-05 | 200 flag toggleado | 401,403,404 | Inverte estado (enabled ↔ disabled) |
+| API-07 | DELETE | /api/admin/feature-flags/{key} | `system:feature-flags:delete` | REQ-03,REQ-05 | 204 sem conteúdo | 401,403,404 | Remove flag do ambiente atual |
+
+## 8.1 Detalhes dos Endpoints
+
+### API-01: Listar Todos os Flags
+**GET** `/api/admin/feature-flags`
+
+Lista todos os feature flags cadastrados em todos os ambientes.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "uuid",
+    "key": "user-registration-enabled",
+    "environment": "Development",
+    "isEnabled": true,
+    "description": "Permite registro de novos usuários",
+    "isCritical": false,
+    "lastUpdatedBy": "admin@example.com",
+    "lastUpdatedAt": "2025-10-01T12:00:00Z"
+  }
+]
+```
+
+### API-02: Atualizar Flag
+**PUT** `/api/admin/feature-flags/{key}`
+
+Atualiza um feature flag existente no ambiente atual. Invalida cache automaticamente.
+
+**Request Body:**
+```json
+{
+  "isEnabled": true,
+  "description": "Nova descrição",
+  "metadata": {
+    "reason": "Habilitando para testes",
+    "ticketId": "JIRA-123"
+  }
+}
+```
+
+**Response 200:** Retorna o flag atualizado (mesmo formato de API-01)
+
+### API-03: Criar Flag
+**POST** `/api/admin/feature-flags`
+
+Cria um novo feature flag.
+
+**Request Body:**
+```json
+{
+  "key": "new-feature-enabled",
+  "environment": "Development",
+  "isEnabled": false,
+  "description": "Nova funcionalidade experimental",
+  "isCritical": false
+}
+```
+
+**Response 201:** Retorna o flag criado com header `Location: /api/admin/feature-flags/{key}`
+
+### API-04: Listar Flags do Ambiente Atual
+**GET** `/api/admin/feature-flags/current`
+
+Lista apenas os feature flags do ambiente em execução (resolvido via `IWebHostEnvironment.EnvironmentName`).
+
+**Response 200:** Array de flags (mesmo formato de API-01)
+
+### API-05: Buscar Flag por Chave
+**GET** `/api/admin/feature-flags/{key}`
+
+Retorna um flag específico do ambiente atual.
+
+**Response 200:** Flag DTO (mesmo formato de API-01)  
+**Response 404:** Flag não encontrado
+
+### API-06: Toggle Flag
+**POST** `/api/admin/feature-flags/{key}/toggle`
+
+Inverte o estado do flag (`isEnabled: true` → `false` ou vice-versa) no ambiente atual. Útil para operações rápidas sem precisar passar payload completo.
+
+**Request Body:** Nenhum
+
+**Response 200:** Retorna o flag com novo estado
+
+### API-07: Deletar Flag
+**DELETE** `/api/admin/feature-flags/{key}`
+
+Remove permanentemente um feature flag do ambiente atual.
+
+**Request Body:** Nenhum
+
+**Response 204:** Sem conteúdo (sucesso)  
+**Response 404:** Flag não encontrado
+
+**⚠️ Atenção:** Esta operação é destrutiva. Flags críticos (`isCritical: true`) devem ter proteção adicional (requer confirmação dupla ou permissão especial).
 
 # 9. Segurança & Performance
-- Segurança: restringir endpoints a administradores; logar usuário responsável; validar inputs para evitar injeção (ex.: key, metadata).
-- Performance: usar cache com timeout curto (ex.: 60s) + invalidação ativa após update; fallback para banco quando cache falhar.
-- Observabilidade: expor métrica `feature_flag_toggle_total` com labels (`key`, `environment`, `status`).
+- **Segurança:** 
+  - Restringir endpoints via permissões RBAC granulares (veja DEC-03):
+    - `system:feature-flags:read` - Consultar flags
+    - `system:feature-flags:create` - Criar novos flags
+    - `system:feature-flags:update` - Atualizar/toggle flags existentes
+    - `system:feature-flags:delete` - Remover flags
+  - Logar usuário responsável extraído via `ClaimsPrincipal.TryGetUserContext()`
+  - Validar inputs para evitar injeção (ex.: key regex, sanitização de metadata JSON)
+  - Flags críticos (`isCritical: true`) devem ter validação adicional antes de delete
+- **Performance:** 
+  - Usar cache em memória (`IMemoryCache`) com timeout configurável (default: 60s)
+  - Invalidação ativa imediatamente após update/toggle/delete
+  - Fallback transparente para banco quando cache falhar (resiliência)
+  - Consultas de leitura (`GET /current`, `GET /{key}`) otimizadas para cache-first
+- **Observabilidade:** 
+  - Expor métrica Prometheus `feature_flag_toggle_total` com labels (`key`, `environment`, `status`, `operation`)
+  - Logar todas as mutações (create/update/toggle/delete) com contexto completo
+  - Dashboard recomendado: Grafana com alertas para mudanças em flags críticos
 
 # 10. i18n
 Não aplicável (mensagens administrativas técnicas). Mensagens podem permanecer em en-US inicialmente.
@@ -130,8 +260,10 @@ Não aplicável (mensagens administrativas técnicas). Mensagens podem permanece
 | REQ-02 | Consulta repetida do mesmo flag em ambiente saudável não acessa o banco (cache hit).
 | REQ-03 | Atualização via API reflete imediatamente na próxima consulta (cache invalidado).
 | REQ-04 | Flag pode ter valores distintos por ambiente e consulta retorna valor correto.
-| REQ-05 | Endpoint protegido exige role/admin; resposta lista flags existentes.
+| REQ-05 | Endpoints protegidos exigem permissões RBAC apropriadas (`system:feature-flags:*`); operações não autorizadas retornam 403.
 | REQ-06 | Logs exibem `event=FeatureFlagChanged` com detalhes (key, from, to, user).
+| REQ-09 | Endpoint toggle inverte estado sem payload e retorna flag atualizado.
+| REQ-10 | Endpoint `/current` retorna apenas flags do ambiente atual; endpoint raiz retorna todos.
 
 # 14. Testes (Mapa Resumido)
 | TEST | Tipo | Cobre REQ | Descrição |
@@ -141,13 +273,18 @@ Não aplicável (mensagens administrativas técnicas). Mensagens podem permanece
 | TEST-03 | Integration | REQ-05 | Endpoint PUT atualiza flag com autenticação válida. |
 | TEST-04 | Integration | REQ-04 | Flags por ambiente retornam valores distintos. |
 | TEST-05 | Unit | NFR-05 | Falha de cache leva a fallback para banco sem exceção. |
+| TEST-06 | Integration | REQ-09 | Endpoint toggle inverte estado corretamente. |
+| TEST-07 | Integration | REQ-10 | Endpoint `/current` filtra por ambiente, endpoint raiz retorna todos. |
+| TEST-08 | Integration | REQ-05 | DELETE remove flag e retorna 204; segunda tentativa retorna 404. |
+| TEST-09 | Integration | REQ-05 | GET `/{key}` busca flag específico; retorna 404 se não existe. |
+| TEST-10 | Integration | NFR-01 | Tentativas sem permissão retornam 403 para todos os endpoints. |
 
 # 15. Decisões
 | ID | Contexto | Decisão | Alternativas | Consequência |
 |----|----------|--------|--------------|--------------|
 | DEC-01 | Persistência | Usar EF Core + tabela `FeatureFlags` | Config files | Coerência com stack atual |
 | DEC-02 | Cache | `IMemoryCache` com invalidation manual | Redis/local cache | Simplicidade inicial |
-| DEC-03 | Autorização | Restringir endpoints a role `admin` | API aberta | Protege toggles críticos |
+| DEC-03 | Autorização | Usar permissões RBAC granulares (`system:feature-flags:*`) integradas com SPEC-0011 | Role `admin` simples | Permite controle fino (read/create/update/delete separados); prepara para delegação de gestão de flags |
 | DEC-04 | Resolução de Ambiente | Usar `IWebHostEnvironment.EnvironmentName` do ASP.NET Core | Headers HTTP, Claims JWT, Config manual | Zero configuração extra; alinhado com convenções .NET; funciona com `ASPNETCORE_ENVIRONMENT` |
 | DEC-05 | Compatibilidade RBAC | Criar adapter para `IRbacFeatureManager` e marcar como obsoleto após migração | Quebrar API existente imediatamente | Permite transição gradual sem breaking changes |
 | DEC-06 | Auditoria | Usar log estruturado + campos básicos (`LastUpdatedBy`, `LastUpdatedAt`, `Metadata`) sem tabela de auditoria separada | Tabela `FeatureFlagAuditLog` completa | Simplicidade e entrega rápida; suficiente para 90% dos casos; logs podem ser importados futuramente se compliance exigir (veja SPEC-0006-V2 para auditoria completa) |

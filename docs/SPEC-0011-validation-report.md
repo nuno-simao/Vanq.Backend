@@ -176,16 +176,16 @@ public class UserRole
 
 | ID | Método | Rota | Permissão | Implementação | Status |
 |----|--------|------|-----------|---------------|--------|
-| API-01 | GET | /api/auth/roles | `rbac:role:read` | `RolesEndpoints.cs` | ✅ Conforme |
-| API-02 | POST | /api/auth/roles | `rbac:role:create` | `RolesEndpoints.cs` | ✅ Conforme |
-| API-03 | PATCH | /api/auth/roles/{roleId} | `rbac:role:update` | `RolesEndpoints.cs` | ✅ Conforme |
-| API-04 | DELETE | /api/auth/roles/{roleId} | `rbac:role:delete` | `RolesEndpoints.cs` | ✅ Conforme |
-| API-05 | GET | /api/auth/permissions | `rbac:permission:read` | `PermissionsEndpoints.cs` | ✅ Conforme |
-| API-06 | POST | /api/auth/permissions | `rbac:permission:create` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
-| API-07 | PATCH | /api/auth/permissions/{permissionId} | `rbac:permission:update` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
-| API-08 | DELETE | /api/auth/permissions/{permissionId} | `rbac:permission:delete` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
-| API-09 | POST | /api/auth/users/{userId}/roles | `rbac:user:role:assign` | `UserRoleEndpoints.cs` | ✅ Conforme |
-| API-10 | DELETE | /api/auth/users/{userId}/roles/{roleId} | `rbac:user:role:revoke` | `UserRoleEndpoints.cs` | ✅ Conforme |
+| API-01 | GET | `/api/auth/roles` | `rbac:role:read` | `RolesEndpoints.cs` | ✅ Conforme |
+| API-02 | POST | `/api/auth/roles` | `rbac:role:create` | `RolesEndpoints.cs` | ✅ Conforme |
+| API-03 | PATCH | `/api/auth/roles/{roleId}` | `rbac:role:update` | `RolesEndpoints.cs` | ✅ Conforme |
+| API-04 | DELETE | `/api/auth/roles/{roleId}` | `rbac:role:delete` | `RolesEndpoints.cs` | ✅ Conforme |
+| API-05 | GET | `/api/auth/permissions` | `rbac:permission:read` | `PermissionsEndpoints.cs` | ✅ Conforme |
+| API-06 | POST | `/api/auth/permissions` | `rbac:permission:create` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
+| API-07 | PATCH | `/api/auth/permissions/{permissionId}` | `rbac:permission:update` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
+| API-08 | DELETE | `/api/auth/permissions/{permissionId}` | `rbac:permission:delete` | `PermissionsEndpoints.cs` | ✅ Conforme (DEC-03) |
+| API-09 | POST | `/api/auth/users/{userId}/roles` | `rbac:user:role:assign` | `UserRoleEndpoints.cs` | ✅ Conforme |
+| API-10 | DELETE | `/api/auth/users/{userId}/roles/{roleId}` | `rbac:user:role:revoke` | `UserRoleEndpoints.cs` | ✅ Conforme |
 
 **Validação Técnica:**
 

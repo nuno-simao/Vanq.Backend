@@ -29,7 +29,7 @@ A implementação do **Feature Flags** está **CONFORME** ao SPEC-0006, com **10
 - ✅ **Entidade de Domínio:** `FeatureFlag` com validações e invariantes
 - ✅ **Camada de Aplicação:** Contratos `IFeatureFlagService` e `IFeatureFlagRepository` + DTOs
 - ✅ **Camada de Infraestrutura:** `FeatureFlagService` com cache, `FeatureFlagRepository` EF Core, e 42 flags de seed
-- ✅ **Camada de API:** 7 endpoints REST (`/admin/feature-flags/*`) com autorização RBAC
+- ✅ **Camada de API:** 7 endpoints REST (`/api/admin/feature-flags/*`) com autorização RBAC
 - ✅ **Migração de Banco:** Tabela `FeatureFlags` com índices únicos e seed data
 - ✅ **Testes:** 20 testes (8 repositório + 12 serviço) - 46/46 total passando (100%)
 - ✅ **Documentação:** Guia completo em `docs/feature-flags.md`
@@ -42,13 +42,13 @@ A implementação do **Feature Flags** está **CONFORME** ao SPEC-0006, com **10
 
 | ID | Método | Rota | Auth | Status |
 |----|--------|------|------|--------|
-| API-01 | GET | `/admin/feature-flags` | JWT + RBAC | ✅ Conforme |
-| API-02 | PUT | `/admin/feature-flags/{key}` | JWT + RBAC | ✅ Conforme |
-| API-03 | POST | `/admin/feature-flags` | JWT + RBAC | ✅ Conforme |
-| Extra-1 | GET | `/admin/feature-flags/current` | JWT + RBAC | ✅ Implementado |
-| Extra-2 | GET | `/admin/feature-flags/{key}` | JWT + RBAC | ✅ Implementado |
-| Extra-3 | POST | `/admin/feature-flags/{key}/toggle` | JWT + RBAC | ✅ Implementado |
-| Extra-4 | DELETE | `/admin/feature-flags/{key}` | JWT + RBAC | ✅ Implementado |
+| API-01 | GET | `/api/admin/feature-flags` | JWT + RBAC | ✅ Conforme |
+| API-02 | PUT | `/api/admin/feature-flags/{key}` | JWT + RBAC | ✅ Conforme |
+| API-03 | POST | `/api/admin/feature-flags` | JWT + RBAC | ✅ Conforme |
+| Extra-1 | GET | `/api/admin/feature-flags/current` | JWT + RBAC | ✅ Implementado |
+| Extra-2 | GET | `/api/admin/feature-flags/{key}` | JWT + RBAC | ✅ Implementado |
+| Extra-3 | POST | `/api/admin/feature-flags/{key}/toggle` | JWT + RBAC | ✅ Implementado |
+| Extra-4 | DELETE | `/api/admin/feature-flags/{key}` | JWT + RBAC | ✅ Implementado |
 
 **Nota:** Todos os endpoints usam `.RequirePermission("system:feature-flags:read|create|update|delete")` conforme RBAC.
 
@@ -290,13 +290,13 @@ CreateFlag("cors-relaxed", "Production", false, "Habilita política CORS permiss
 
 | Método | Rota | Permissão | Descrição |
 |--------|------|-----------|-----------|
-| GET | `/admin/feature-flags` | `system:feature-flags:read` | Lista todos os flags |
-| GET | `/admin/feature-flags/current` | `system:feature-flags:read` | Lista flags do ambiente atual |
-| GET | `/admin/feature-flags/{key}` | `system:feature-flags:read` | Obtém flag específico |
-| POST | `/admin/feature-flags` | `system:feature-flags:create` | Cria novo flag |
-| PUT | `/admin/feature-flags/{key}` | `system:feature-flags:update` | Atualiza flag existente |
-| POST | `/admin/feature-flags/{key}/toggle` | `system:feature-flags:update` | Alterna estado IsEnabled |
-| DELETE | `/admin/feature-flags/{key}` | `system:feature-flags:delete` | Remove flag |
+| GET | `/api/admin/feature-flags` | `system:feature-flags:read` | Lista todos os flags |
+| GET | `/api/admin/feature-flags/current` | `system:feature-flags:read` | Lista flags do ambiente atual |
+| GET | `/api/admin/feature-flags/{key}` | `system:feature-flags:read` | Obtém flag específico |
+| POST | `/api/admin/feature-flags` | `system:feature-flags:create` | Cria novo flag |
+| PUT | `/api/admin/feature-flags/{key}` | `system:feature-flags:update` | Atualiza flag existente |
+| POST | `/api/admin/feature-flags/{key}/toggle` | `system:feature-flags:update` | Alterna estado IsEnabled |
+| DELETE | `/api/admin/feature-flags/{key}` | `system:feature-flags:delete` | Remove flag |
 
 **Código de Autorização:**
 ```csharp
@@ -620,9 +620,9 @@ var isEnabled = flag?.IsEnabled ?? false; // Null-coalescing para false
 - [x] ENT-01: FeatureFlag ✅
 
 ### API Endpoints
-- [x] API-01: GET /admin/feature-flags ✅
-- [x] API-02: PUT /admin/feature-flags/{key} ✅
-- [x] API-03: POST /admin/feature-flags ✅
+- [x] API-01: GET /api/admin/feature-flags ✅
+- [x] API-02: PUT /api/admin/feature-flags/{key} ✅
+- [x] API-03: POST /api/admin/feature-flags ✅
 - [x] Extra: 4 endpoints adicionais implementados ✅
 
 ### Regras de Negócio

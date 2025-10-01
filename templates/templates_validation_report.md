@@ -39,9 +39,9 @@ A implementação do {NOME_DA_FEATURE} está **[STATUS]** ao SPEC-{XXXX}, com {X
 
 | ID | Nome/Endpoint | Implementado | Detalhes | Status |
 |----|---------------|--------------|----------|--------|
-| {ID-01} | {Nome} | ✅ | {Detalhes} | ✅ Conforme |
-| {ID-02} | {Nome} | ✅ | {Detalhes} | ✅ Conforme |
-| {ID-03} | {Nome} | ✅ | {Detalhes} | ✅ Conforme |
+| {ID-01} | `{Nome}` | ✅ | {Detalhes} | ✅ Conforme |
+| {ID-02} | `{Nome}` | ✅ | {Detalhes} | ✅ Conforme |
+| {ID-03} | `{Nome}` | ✅ | {Detalhes} | ✅ Conforme |
 
 **Nota:** {Observações adicionais sobre organização ou decisões técnicas}
 
