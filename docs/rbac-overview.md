@@ -13,6 +13,8 @@ Este documento resume os principais conceitos, rotas e permissões introduzidos 
 
 ## Endpoints disponíveis
 
+**Nota:** Conforme DEC-04 do SPEC-0011, endpoints RBAC são organizados por domínio de recurso sob o grupo `/auth`.
+
 | Rota | Verbo | Descrição | Permissão exigida |
 |------|-------|-----------|-------------------|
 | `/auth/roles` | GET | Lista todas as roles registradas. | `rbac:role:read` |
@@ -127,7 +129,9 @@ Este documento resume os principais conceitos, rotas e permissões introduzidos 
 
 ## Considerações de uso
 
-1. Habilite o feature flag `feature-rbac` nas configurações para ativar a validação granular.
+1. Habilite o feature flag `rbac-enabled` nas configurações para ativar a validação granular.
+   - Atualmente gerenciado via `Rbac:FeatureEnabled` em `appsettings.json`
+   - Futuramente será migrado para o sistema de feature flags centralizado (SPEC-0006)
 2. Seeds padrão podem ser configurados via `Rbac:Seed` em `appsettings.*`; roles de sistema comuns incluem `admin`, `manager` e `viewer`.
 3. Ao alterar permissões de uma role ou atribuições de usuário, tokens existentes são invalidados automaticamente e novos tokens devem ser obtidos.
 

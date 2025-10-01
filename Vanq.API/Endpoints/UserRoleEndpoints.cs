@@ -12,11 +12,11 @@ using Vanq.Shared.Security;
 
 namespace Vanq.API.Endpoints;
 
-public static class UsersEndpoints
+public static class UserRoleEndpoints
 {
-    public static RouteGroupBuilder MapUserRoleEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapUserRoleEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/users/{userId:guid}/roles")
+        group = group.MapGroup("/users/{userId:guid}/roles")
             .WithTags("UserRoles")
             .RequireAuthorization();
 

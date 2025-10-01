@@ -15,9 +15,9 @@ namespace Vanq.API.Endpoints;
 
 public static class PermissionsEndpoints
 {
-    public static RouteGroupBuilder MapPermissionsEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapPermissionsEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/permissions")
+        group = group.MapGroup("/permissions")
             .WithTags("Permissions")
             .RequireAuthorization();
 

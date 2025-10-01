@@ -16,7 +16,7 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/auth").WithTags("Auth");
+        RouteGroupBuilder group = app.MapGroup("/auth").WithTags("Auth");
 
         group.MapPost("/register", RegisterAsync)
             .AllowAnonymous()
@@ -51,6 +51,10 @@ public static class AuthEndpoints
             .Produces<CurrentUserDto>(StatusCodes.Status200OK)
             .Produces(StatusCodes.Status401Unauthorized)
             .RequireAuthorization();
+
+        group.MapRolesEndpoints();
+        group.MapPermissionsEndpoints();
+        group.MapUserRoleEndpoints();
 
         return app;
     }

@@ -15,9 +15,9 @@ namespace Vanq.API.Endpoints;
 
 public static class RolesEndpoints
 {
-    public static RouteGroupBuilder MapRolesEndpoints(this IEndpointRouteBuilder app)
+    public static RouteGroupBuilder MapRolesEndpoints(this RouteGroupBuilder group)
     {
-        var group = app.MapGroup("/roles")
+        group = group.MapGroup("/roles")
             .WithTags("Roles")
             .RequireAuthorization();
 

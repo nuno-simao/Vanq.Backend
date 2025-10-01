@@ -8,7 +8,8 @@ spec:
   created: 2025-09-30
   updated: 2025-09-30
   priority: high
-  quality_order: [security, reliability, performance, observability, delivery_speed, cost]
+  quality_order: [security, relity, performance, observability, delivery_speed, cost]
+  depends_on: [SPEC-0006]
 ---
 
 # 1. Objetivo
@@ -96,21 +97,24 @@ Adicionar um modelo completo de Role-Based Access Control (RBAC) ao Vanq.Backend
 | Domain | Novas entidades agregadas, atualizações em `User` para expor roles ativos. | Avaliar invariantes e métodos de fábrica. |
 | Application | Casos de uso/serviços para gestão de roles e checagem de permissões. | Integrar com `IAuthService` e criar `IPermissionChecker`. |
 | Infrastructure | Novas configurações EF Core, repositórios específicos, migrações e seeds. | Utilizar transações ao atualizar roles/permissões. |
-| API | Novos endpoints protegidos, políticas/middlewares para autorização granular. | Atualizar documentação Scalar com novos grupos `/auth/roles` e `/auth/permissions`. |
+| API | Novos endpoints protegidos, políticas/middlewares para autorização granular. | Atualizar documentação Scalar com grupos `/roles`, `/permissions` e `/users` (DEC-04). |
 
 # 8. API (Se aplicável)
+
+**Nota:** Conforme DEC-04, endpoints RBAC estão organizados por domínio de recurso (não sob `/auth`).
+
 | ID | Método | Rota | Auth | REQs | Sucesso | Erros |
 |----|--------|------|------|------|---------|-------|
-| API-01 | GET | /auth/roles | JWT + permissão `rbac:role:read` | REQ-03 | 200 List<RoleDto> | 401,403 |
-| API-02 | POST | /auth/roles | JWT + permissão `rbac:role:create` | REQ-03 | 201 RoleDto | 400,401,403 |
-| API-03 | PATCH | /auth/roles/{roleId} | JWT + permissão `rbac:role:update` | REQ-03 | 200 RoleDto | 400,401,403,404 |
-| API-04 | DELETE | /auth/roles/{roleId} | JWT + permissão `rbac:role:delete` | REQ-03, BR-04 | 204 | 400,401,403,404 |
-| API-05 | GET | /auth/permissions | JWT + permissão `rbac:permission:read` | REQ-03 | 200 List<PermissionDto> | 401,403 |
-| API-06 | POST | /auth/permissions | JWT + permissão `rbac:permission:create` | REQ-03 | 201 PermissionDto | 400,401,403 |
-| API-07 | PATCH | /auth/permissions/{permissionId} | JWT + permissão `rbac:permission:update` | REQ-03 | 200 PermissionDto | 400,401,403,404 |
-| API-08 | DELETE | /auth/permissions/{permissionId} | JWT + permissão `rbac:permission:delete` | REQ-03 | 204 | 400,401,403,404 |
-| API-09 | POST | /auth/users/{userId}/roles | JWT + permissão `rbac:user:role:assign` | REQ-02 | 204 | 400,401,403,404 |
-| API-10 | DELETE | /auth/users/{userId}/roles/{roleId} | JWT + permissão `rbac:user:role:revoke` | REQ-02 | 204 | 400,401,403,404 |
+| API-01 | GET | /roles | JWT + permissão `rbac:role:read` | REQ-03 | 200 List<RoleDto> | 401,403 |
+| API-02 | POST | /roles | JWT + permissão `rbac:role:create` | REQ-03 | 201 RoleDto | 400,401,403 |
+| API-03 | PATCH | /roles/{roleId} | JWT + permissão `rbac:role:update` | REQ-03 | 200 RoleDto | 400,401,403,404 |
+| API-04 | DELETE | /roles/{roleId} | JWT + permissão `rbac:role:delete` | REQ-03, BR-04 | 204 | 400,401,403,404 |
+| API-05 | GET | /permissions | JWT + permissão `rbac:permission:read` | REQ-03 | 200 List<PermissionDto> | 401,403 |
+| API-06 | POST | /permissions | JWT + permissão `rbac:permission:create` | REQ-03 | 201 PermissionDto | 400,401,403 |
+| API-07 | PATCH | /permissions/{permissionId} | JWT + permissão `rbac:permission:update` | REQ-03 | 200 PermissionDto | 400,401,403,404 |
+| API-08 | DELETE | /permissions/{permissionId} | JWT + permissão `rbac:permission:delete` | REQ-03 | 204 | 400,401,403,404 |
+| API-09 | POST | /users/{userId}/roles | JWT + permissão `rbac:user:role:assign` | REQ-02 | 204 | 400,401,403,404 |
+| API-10 | DELETE | /users/{userId}/roles/{roleId} | JWT + permissão `rbac:user:role:revoke` | REQ-02 | 204 | 400,401,403,404 |
 
 ## 8.1 Contratos e payloads
 
@@ -196,7 +200,9 @@ Não. Mensagens de erro seguem padrão atual em inglês, com possibilidade de tr
 # 11. Feature Flags
 | ID | Nome | Escopo | Estratégia | Fallback |
 |----|------|--------|------------|----------|
-| FLAG-01 | feature-rbac | API | Release gradual por ambiente | Desligado → mantém autorização atual baseada apenas em claims existentes |
+| FLAG-01 | rbac-enabled | API | Release gradual por ambiente | Desligado → mantém autorização atual baseada apenas em claims existentes |
+
+**Nota:** Este flag está definido no seed data do SPEC-0006 e substitui o antigo `RbacOptions.FeatureEnabled`.
 
 # 12. Tarefas
 | ID | Descrição | Dependências | REQs |
@@ -233,6 +239,8 @@ Não. Mensagens de erro seguem padrão atual em inglês, com possibilidade de tr
 |----|----------|--------|--------------|--------------|
 | DEC-01 | Estrutura de permissões | Utilizar strings em formato `dominio:recurso:acao` armazenadas em tabela dedicada. | Permissões codificadas em enums; claims dinâmicos por endpoint. | Facilita criação dinâmica e delega governança para base de dados. |
 | DEC-02 | Invalidação de tokens | Atualizar `SecurityStamp` em `Role` e `User` para forçar refresh após mudanças críticas. | Não invalidar tokens até expiração natural. | Reduz janela de exposição após alteração de acesso. |
+| DEC-03 | Gestão de Permissions | Permitir criação dinâmica via API (API-06, API-07, API-08) além de seeds iniciais. | Permissions apenas via seed/migrations (fixas). | Flexibilidade para adicionar novas permissões sem deploy; requer validação rigorosa para evitar duplicação/inconsistência. |
+| DEC-04 | Organização de rotas | Agrupar endpoints RBAC por domínio (`/roles`, `/permissions`, `/users/{userId}/roles`) em vez de subgrupo único (`/auth/*`). | Concentrar tudo em `/auth/roles`, `/auth/permissions`, `/auth/users/{userId}/roles`. | Melhora separação de responsabilidades; facilita versionamento independente; alinha com padrão RESTful de recursos; simplifica documentação Scalar com tags separadas. |
 
 # 16. Pendências / Questões
 | ID | Pergunta | Responsável | Status |
@@ -241,4 +249,4 @@ Não. Mensagens de erro seguem padrão atual em inglês, com possibilidade de tr
 | QST-02 | Usuários externos (clientes) usarão o mesmo conjunto de roles? Resposta: Usuários externos são criados sem roles e mantêm acesso mínimo; avaliaremos solução diferenciada apenas se surgir necessidade futura. | Produto | Fechado |
 
 # 17. Prompt Copilot (Resumo)
-Copilot: Implementar SPEC-0011-FEAT-role-based-access-control cumprindo REQ-01..REQ-06, criando ENT-01..ENT-04, endpoints API-01..API-07 restritos por permissões via middleware dedicado, atualizando emissão de JWT para incluir roles/permissões, aplicando feature flag FLAG-01 e atendendo NFR-01..NFR-03. Não introduzir modelos além dos listados e respeitar regras BR-01..BR-04.
+Copilot: Implementar SPEC-0011-FEAT-role-based-access-control cumprindo REQ-01..REQ-06, criando ENT-01..ENT-04, endpoints API-01..API-10 restritos por permissões via middleware dedicado, atualizando emissão de JWT para incluir roles/permissões, aplicando feature flag `rbac-enabled` (FLAG-01 definido em SPEC-0006) e atendendo NFR-01..NFR-03. Permitir gestão dinâmica de permissions via API (DEC-03). Não introduzir modelos além dos listados e respeitar regras BR-01..BR-04.
