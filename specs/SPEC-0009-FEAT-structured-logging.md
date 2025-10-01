@@ -71,7 +71,7 @@ Nenhuma entidade de domínio; criar classes utilitárias e configurações.
 | Entidade | Campo | Tipo | Nullable | Regra / Constraint |
 |----------|-------|------|----------|--------------------|
 | LoggingOptions | MinimumLevel | string | Não | `Information` default |
-| LoggingOptions | MaskedFields | string[] | Sim | Lista de campos a mascarar |
+| LoggingOptions | MaskedFields | string[] | Sim | Lista de campos a mascarar (password, token, refreshToken, email, cpf, telefone, phone) |
 | LoggingOptions | ConsoleJson | bool | Não | Default true |
 | LoggingOptions | FilePath | string | Sim | Habilita sink arquivo |
 | LoggingOptions | EnableRequestLogging | bool | Não | controla middleware |
@@ -137,13 +137,15 @@ Mensagens de log devem preferir inglês padrão; separar `messageTemplate` e usa
 | DEC-01 | Logger | Usar Serilog puro (Serilog.Core + sinks) | Microsoft.Extensions.Logging padrão | Maior controle de formato.
 | DEC-02 | Formato | JSON estruturado com message templates | Texto simples | Facilita ingestão por observability stack.
 | DEC-03 | Redaction | Lista configurável de campos + regex para padrões | Redaction manual em cada log | Centraliza política.
+| DEC-04 | Sink Produção | Usar apenas File sink em produção | Seq/Elastic/Cloud providers | Simplicidade, menor custo, logs locais auditáveis.
+| DEC-05 | OpenTelemetry | Não integrar com OTel nesta spec | Correlação com traces distribuídos | Reduz complexidade inicial; pode ser adicionado futuramente.
 
 # 16. Pendências / Questões
-| ID | Pergunta | Responsável | Status |
-|----|----------|-------------|--------|
-| QST-01 | Quais sinks serão usados em produção (Seq, Elastic, File)? | owner | Aberto |
-| QST-02 | Precisamos correlacionar logs com métricas/traces (OpenTelemetry)? | owner | Aberto |
-| QST-03 | Campos sensíveis adicionais (CPF, telefone) devem ser mascarados por padrão? | owner | Aberto |
+| ID | Pergunta | Responsável | Status | Resposta |
+|----|----------|-------------|--------|----------|
+| QST-01 | Quais sinks serão usados em produção (Seq, Elastic, File)? | owner | Resolvido | File apenas |
+| QST-02 | Precisamos correlacionar logs com métricas/traces (OpenTelemetry)? | owner | Resolvido | Não (fora do escopo) |
+| QST-03 | Campos sensíveis adicionais (CPF, telefone) devem ser mascarados por padrão? | owner | Resolvido | Sim, incluir na lista de masked fields |
 
 # 17. Prompt Copilot (Resumo)
 Copilot: Implementar SPEC-0009 configurando Serilog puro como logger estruturado, adicionando middleware de request logging com redaction, helpers para eventos, opções configuráveis e testes garantindo ausência de dados sensíveis nos logs.

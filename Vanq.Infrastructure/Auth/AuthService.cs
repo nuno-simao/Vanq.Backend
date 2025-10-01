@@ -12,6 +12,7 @@ using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Configuration;
 using Vanq.Application.Contracts.Auth;
 using Vanq.Domain.Entities;
+using Vanq.Infrastructure.Logging.Extensions;
 using Vanq.Infrastructure.Rbac;
 using Vanq.Shared;
 using Vanq.Shared.Security;
@@ -62,6 +63,7 @@ public sealed class AuthService : IAuthService
         var emailExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
         if (emailExists)
         {
+            _logger.LogAuthEvent("UserRegistration", "failure", email: normalizedEmail, reason: "EmailAlreadyInUse");
             return AuthResult<AuthResponseDto>.Failure(AuthError.EmailAlreadyInUse, "Email already registered");
         }
 
@@ -81,6 +83,7 @@ public sealed class AuthService : IAuthService
         var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
+        _logger.LogAuthEvent("UserRegistration", "success", userId: user.Id, email: normalizedEmail);
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
     }
 
@@ -91,16 +94,19 @@ public sealed class AuthService : IAuthService
 
         if (user is null)
         {
+            _logger.LogAuthEvent("UserLogin", "failure", email: normalizedEmail, reason: "InvalidCredentials");
             return AuthResult<AuthResponseDto>.Failure(AuthError.InvalidCredentials);
         }
 
         if (!_passwordHasher.Verify(user.PasswordHash, request.Password))
         {
+            _logger.LogAuthEvent("UserLogin", "failure", userId: user.Id, email: normalizedEmail, reason: "InvalidPassword");
             return AuthResult<AuthResponseDto>.Failure(AuthError.InvalidCredentials);
         }
 
         if (!user.IsActive)
         {
+            _logger.LogAuthEvent("UserLogin", "failure", userId: user.Id, email: normalizedEmail, reason: "UserInactive");
             return AuthResult<AuthResponseDto>.Failure(AuthError.UserInactive);
         }
 
@@ -114,6 +120,7 @@ public sealed class AuthService : IAuthService
         var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
+        _logger.LogAuthEvent("UserLogin", "success", userId: user.Id, email: normalizedEmail);
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
     }
 
@@ -121,15 +128,18 @@ public sealed class AuthService : IAuthService
     {
         if (userId == Guid.Empty)
         {
+            _logger.LogAuthEvent("UserLogout", "failure", reason: "InvalidUserId");
             return AuthResult<bool>.Failure(AuthError.MissingUserContext, "Invalid user identifier");
         }
 
         if (string.IsNullOrWhiteSpace(refreshToken))
         {
+            _logger.LogAuthEvent("UserLogout", "failure", userId: userId, reason: "MissingRefreshToken");
             return AuthResult<bool>.Failure(AuthError.InvalidRefreshToken, "Refresh token is required");
         }
 
         await _refreshTokenService.RevokeAsync(userId, refreshToken, cancellationToken);
+        _logger.LogAuthEvent("UserLogout", "success", userId: userId);
         return AuthResult<bool>.Success(true);
     }
 

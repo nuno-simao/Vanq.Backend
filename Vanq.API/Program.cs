@@ -4,16 +4,79 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Events;
 using Vanq.API.Endpoints;
 using Vanq.API.OpenApi;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Rbac;
 using Vanq.Infrastructure.DependencyInjection;
+using Vanq.Infrastructure.Logging;
+using Vanq.Infrastructure.Logging.Middleware;
 using Vanq.Infrastructure.Rbac;
 using Vanq.Shared.Security;
 
-var builder = WebApplication.CreateBuilder(args);
+// Configure Serilog early
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithThreadId()
+    .Enrich.WithProcessId()
+    .Enrich.WithEnvironmentName()
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateBootstrapLogger();
+
+try
+{
+    Log.Information("Starting Vanq.API application");
+
+    var builder = WebApplication.CreateBuilder(args);
+
+    // Replace default logging with Serilog
+    builder.Host.UseSerilog((context, services, configuration) =>
+    {
+        var loggingOptions = context.Configuration
+            .GetSection("StructuredLogging")
+            .Get<LoggingOptions>() ?? new LoggingOptions();
+
+        var minimumLevel = Enum.TryParse<LogEventLevel>(loggingOptions.MinimumLevel, out var level)
+            ? level
+            : LogEventLevel.Information;
+
+        configuration
+            .MinimumLevel.Is(minimumLevel)
+            .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+            .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .Enrich.WithThreadId()
+            .Enrich.WithProcessId()
+            .Enrich.WithEnvironmentName()
+            .Enrich.WithProperty("Application", "Vanq.API")
+            .Enrich.WithProperty("Version", "1.0.0");
+
+        if (loggingOptions.ConsoleJson)
+        {
+            configuration.WriteTo.Console(
+                new Serilog.Formatting.Compact.CompactJsonFormatter());
+        }
+        else
+        {
+            configuration.WriteTo.Console(
+                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(loggingOptions.FilePath))
+        {
+            configuration.WriteTo.File(
+                new Serilog.Formatting.Compact.CompactJsonFormatter(),
+                loggingOptions.FilePath,
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                fileSizeLimitBytes: 100_000_000,
+                rollOnFileSizeLimit: true);
+        }
+    });
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -118,24 +181,47 @@ builder.Services
         };
     });
 
-builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization();
 
-var app = builder.Build();
+    // Register LoggingOptions for DI
+    builder.Services.Configure<LoggingOptions>(
+        builder.Configuration.GetSection("StructuredLogging"));
 
-app.MapOpenApi();
-app.MapScalarApiReference(options =>
+    // Register SensitiveDataRedactor
+    builder.Services.AddSingleton<SensitiveDataRedactor>();
+
+    var app = builder.Build();
+
+    // Add request logging middleware
+    app.UseMiddleware<RequestResponseLoggingMiddleware>();
+
+    app.UseSerilogRequestLogging();
+
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.WithTitle("Vanq API Reference");
+    });
+
+    app.UseHttpsRedirection();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapGet("/", () => Results.Redirect("/scalar"))
+       .ExcludeFromDescription();
+
+    app.MapAllEndpoints();
+
+    Log.Information("Vanq.API started successfully");
+
+    app.Run();
+}
+catch (Exception ex)
 {
-    options.WithTitle("Vanq API Reference");
-});
-
-app.UseHttpsRedirection();
-
-app.UseAuthentication();
-app.UseAuthorization();
-
-app.MapGet("/", () => Results.Redirect("/scalar"))
-   .ExcludeFromDescription();
-
-app.MapAllEndpoints();
-
-app.Run();
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
