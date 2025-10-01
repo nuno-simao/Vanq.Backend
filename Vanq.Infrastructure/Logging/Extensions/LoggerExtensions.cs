@@ -61,13 +61,15 @@ public static class LoggerExtensions
         this ILogger logger,
         string flagName,
         bool isEnabled,
-        string environment)
+        string? environment = null,
+        string? reason = null)
     {
-        logger.LogInformation(
-            "Feature Flag Evaluated: {FlagName} | Enabled: {IsEnabled} | Environment: {Environment}",
+        logger.LogDebug(
+            "Feature Flag: {FlagName} | Enabled: {IsEnabled} | Environment: {Environment} | Reason: {Reason}",
             flagName,
             isEnabled,
-            environment
+            environment ?? "N/A",
+            reason ?? "N/A"
         );
     }
 

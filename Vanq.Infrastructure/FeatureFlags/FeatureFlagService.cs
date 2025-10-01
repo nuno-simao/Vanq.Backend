@@ -6,6 +6,7 @@ using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Contracts.FeatureFlags;
 using Vanq.Domain.Entities;
+using Vanq.Infrastructure.Logging.Extensions;
 using Vanq.Shared;
 
 namespace Vanq.Infrastructure.FeatureFlags;
@@ -47,7 +48,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
         // Try cache first
         if (_cache.TryGetValue<bool>(cacheKey, out var cachedValue))
         {
-            _logger.LogDebug("Feature flag '{Key}' cache hit: {IsEnabled}", normalizedKey, cachedValue);
+            _logger.LogFeatureFlagEvent(normalizedKey, cachedValue, _environment.EnvironmentName, "cache hit");
             return cachedValue;
         }
 
@@ -64,10 +65,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
             // Cache the result
             _cache.Set(cacheKey, isEnabled, TimeSpan.FromSeconds(CacheDurationSeconds));
 
-            _logger.LogDebug(
-                "Feature flag '{Key}' loaded from database: {IsEnabled}",
-                normalizedKey,
-                isEnabled);
+            _logger.LogFeatureFlagEvent(normalizedKey, isEnabled, _environment.EnvironmentName, "database load");
 
             return isEnabled;
         }
@@ -94,6 +92,7 @@ internal sealed class FeatureFlagService : IFeatureFlagService
         // Try cache first
         if (_cache.TryGetValue<bool>(cacheKey, out var cachedValue))
         {
+            _logger.LogFeatureFlagEvent(normalizedKey, cachedValue, _environment.EnvironmentName, "cache hit");
             return cachedValue;
         }
 
@@ -109,6 +108,9 @@ internal sealed class FeatureFlagService : IFeatureFlagService
 
             // Cache the result
             _cache.Set(cacheKey, isEnabled, TimeSpan.FromSeconds(CacheDurationSeconds));
+
+            _logger.LogFeatureFlagEvent(normalizedKey, isEnabled, _environment.EnvironmentName,
+                flag is null ? $"flag not found, using default: {defaultValue}" : "database load");
 
             return isEnabled;
         }

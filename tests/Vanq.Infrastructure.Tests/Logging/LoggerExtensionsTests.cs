@@ -87,13 +87,13 @@ public class LoggerExtensionsTests
     }
 
     [Fact]
-    public void LogFeatureFlagEvent_ShouldLogAtInformationLevel_Always()
+    public void LogFeatureFlagEvent_ShouldLogAtDebugLevel_Always()
     {
         // Act
-        _logger.LogFeatureFlagEvent("rbac-enabled", true, "Development");
+        _logger.LogFeatureFlagEvent("rbac-enabled", true, "Development", "cache hit");
 
         // Assert
-        _logger.LastLogLevel.ShouldBe(LogLevel.Information);
+        _logger.LastLogLevel.ShouldBe(LogLevel.Debug);
         _logger.LastMessage.ShouldContain("rbac-enabled");
         _logger.LastMessage.ShouldContain("True");
         _logger.LastMessage.ShouldContain("Development");
