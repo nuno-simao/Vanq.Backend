@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -19,7 +20,13 @@ public class JwtTokenService : IJwtTokenService
         _signingKey = Encoding.UTF8.GetBytes(_options.SigningKey);
     }
 
-    public (string Token, DateTime ExpiresAtUtc) GenerateAccessToken(Guid userId, string email, string securityStamp)
+    public (string Token, DateTime ExpiresAtUtc) GenerateAccessToken(
+        Guid userId,
+        string email,
+        string securityStamp,
+        IReadOnlyCollection<string> roles,
+        IReadOnlyCollection<string> permissions,
+        string rolesSecurityStamp)
     {
         var now = DateTime.UtcNow;
         var expires = now.AddMinutes(_options.AccessTokenMinutes);
@@ -31,6 +38,27 @@ public class JwtTokenService : IJwtTokenService
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new("security_stamp", securityStamp)
         };
+
+        if (!string.IsNullOrWhiteSpace(rolesSecurityStamp))
+        {
+            claims.Add(new Claim("roles_stamp", rolesSecurityStamp));
+        }
+
+        foreach (var role in roles)
+        {
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+        }
+
+        foreach (var permission in permissions)
+        {
+            if (!string.IsNullOrWhiteSpace(permission))
+            {
+                claims.Add(new Claim("permission", permission));
+            }
+        }
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {

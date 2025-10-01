@@ -1,9 +1,13 @@
+using System;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Vanq.Application.Abstractions.Auth;
-using Vanq.Application.Contracts.Auth;
 using Vanq.API.Extensions;
+using Vanq.Application.Abstractions.Auth;
+using Vanq.Application.Abstractions.Rbac;
+using Vanq.Application.Contracts.Auth;
 using Vanq.Shared.Security;
 
 namespace Vanq.API.Endpoints;
@@ -84,7 +88,7 @@ public static class AuthEndpoints
         IAuthService authService,
         CancellationToken cancellationToken)
     {
-    if (!principal.TryGetUserId(out var userId))
+        if (!principal.TryGetUserId(out var userId))
         {
             return Results.Unauthorized();
         }

@@ -1,10 +1,18 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Vanq.Application.Abstractions.Auth;
 using Vanq.Application.Abstractions.Persistence;
+using Vanq.Application.Abstractions.Rbac;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
+using Vanq.Application.Configuration;
 using Vanq.Application.Contracts.Auth;
 using Vanq.Domain.Entities;
+using Vanq.Infrastructure.Rbac;
 using Vanq.Shared.Security;
 
 namespace Vanq.Infrastructure.Auth;
@@ -17,6 +25,10 @@ public sealed class AuthService : IAuthService
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
     private readonly IDateTimeProvider _clock;
+    private readonly IRoleRepository _roleRepository;
+    private readonly IRbacFeatureManager _rbacFeatureManager;
+    private readonly RbacOptions _rbacOptions;
+    private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         IUserRepository userRepository,
@@ -24,7 +36,11 @@ public sealed class AuthService : IAuthService
         IPasswordHasher passwordHasher,
         IJwtTokenService jwtTokenService,
         IRefreshTokenService refreshTokenService,
-        IDateTimeProvider clock)
+        IDateTimeProvider clock,
+        IRoleRepository roleRepository,
+        IRbacFeatureManager rbacFeatureManager,
+        IOptions<RbacOptions> rbacOptions,
+        ILogger<AuthService> logger)
     {
         _userRepository = userRepository;
         _unitOfWork = unitOfWork;
@@ -32,6 +48,10 @@ public sealed class AuthService : IAuthService
         _jwtTokenService = jwtTokenService;
         _refreshTokenService = refreshTokenService;
         _clock = clock;
+        _roleRepository = roleRepository;
+        _rbacFeatureManager = rbacFeatureManager;
+        _rbacOptions = rbacOptions.Value;
+        _logger = logger;
     }
 
     public async Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterUserDto request, CancellationToken cancellationToken)
@@ -47,10 +67,17 @@ public sealed class AuthService : IAuthService
         var passwordHash = _passwordHasher.Hash(request.Password);
         var user = User.Create(normalizedEmail, passwordHash, _clock.UtcNow);
 
-        await _userRepository.AddAsync(user, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        if (_rbacFeatureManager.IsEnabled)
+        {
+            await AssignDefaultRoleIfNeededAsync(user, cancellationToken).ConfigureAwait(false);
+        }
 
-        var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp);
+        await _userRepository.AddAsync(user, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var enrichedUser = await _userRepository.GetByIdWithRolesAsync(user.Id, cancellationToken).ConfigureAwait(false) ?? user;
+    var (roles, permissions, rolesStamp) = RbacTokenPayloadBuilder.Build(enrichedUser);
+        var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
@@ -59,7 +86,7 @@ public sealed class AuthService : IAuthService
     public async Task<AuthResult<AuthResponseDto>> LoginAsync(AuthRequestDto request, CancellationToken cancellationToken)
     {
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+        var user = await _userRepository.GetByEmailWithRolesAsync(normalizedEmail, cancellationToken);
 
         if (user is null)
         {
@@ -76,7 +103,14 @@ public sealed class AuthService : IAuthService
             return AuthResult<AuthResponseDto>.Failure(AuthError.UserInactive);
         }
 
-        var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp);
+        if (_rbacFeatureManager.IsEnabled && !user.HasAnyActiveRole())
+        {
+            await AssignDefaultRoleToPersistedUserAsync(user, cancellationToken).ConfigureAwait(false);
+            user = await _userRepository.GetByIdWithRolesAsync(user.Id, cancellationToken).ConfigureAwait(false) ?? user;
+        }
+
+    var (roles, permissions, rolesStamp) = RbacTokenPayloadBuilder.Build(user);
+        var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
@@ -105,6 +139,69 @@ public sealed class AuthService : IAuthService
             return AuthResult<CurrentUserDto>.Failure(AuthError.MissingUserContext, "User information is not available");
         }
 
-    return AuthResult<CurrentUserDto>.Success(new CurrentUserDto(userId, email!));
+        var roles = principal.FindAll(ClaimTypes.Role).Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        var permissions = principal.FindAll("permission").Select(claim => claim.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+        return AuthResult<CurrentUserDto>.Success(new CurrentUserDto(userId, email!, roles, permissions));
     }
+
+    private async Task AssignDefaultRoleIfNeededAsync(User user, CancellationToken cancellationToken)
+    {
+        if (user.HasAnyActiveRole())
+        {
+            return;
+        }
+
+        var defaultRole = await GetDefaultRoleAsync(cancellationToken).ConfigureAwait(false);
+        if (defaultRole is null)
+        {
+            _logger.LogWarning("Default role '{DefaultRole}' not found. Skipping automatic assignment.", _rbacOptions.DefaultRole);
+            return;
+        }
+
+        if (user.HasActiveRole(defaultRole.Id))
+        {
+            return;
+        }
+
+        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        user.AssignRole(defaultRole.Id, Guid.Empty, timestamp);
+    }
+
+    private async Task AssignDefaultRoleToPersistedUserAsync(User user, CancellationToken cancellationToken)
+    {
+        var defaultRole = await GetDefaultRoleAsync(cancellationToken).ConfigureAwait(false);
+        if (defaultRole is null)
+        {
+            _logger.LogWarning("Default role '{DefaultRole}' not found. User {UserId} remains without roles.", _rbacOptions.DefaultRole, user.Id);
+            return;
+        }
+
+        if (user.HasActiveRole(defaultRole.Id))
+        {
+            return;
+        }
+
+        var timestamp = new DateTimeOffset(DateTime.SpecifyKind(_clock.UtcNow, DateTimeKind.Utc));
+        user.AssignRole(defaultRole.Id, Guid.Empty, timestamp);
+        _userRepository.Update(user);
+        await _unitOfWork.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<Role?> GetDefaultRoleAsync(CancellationToken cancellationToken)
+    {
+        if (!_rbacFeatureManager.IsEnabled)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(_rbacOptions.DefaultRole))
+        {
+            return null;
+        }
+
+        var normalized = _rbacOptions.DefaultRole.Trim().ToLowerInvariant();
+        return await _roleRepository.GetByNameWithPermissionsAsync(normalized, cancellationToken).ConfigureAwait(false);
+    }
+
 }

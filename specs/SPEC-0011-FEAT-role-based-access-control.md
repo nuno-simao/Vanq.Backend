@@ -3,7 +3,7 @@ spec:
   id: SPEC-0011-FEAT-role-based-access-control
   type: feature
   version: 0.1.0
-  status: draft
+  status: approved
   owner: nuno-simao
   created: 2025-09-30
   updated: 2025-09-30
@@ -101,13 +101,89 @@ Adicionar um modelo completo de Role-Based Access Control (RBAC) ao Vanq.Backend
 # 8. API (Se aplicável)
 | ID | Método | Rota | Auth | REQs | Sucesso | Erros |
 |----|--------|------|------|------|---------|-------|
-| API-01 | GET | /auth/roles | JWT + permission `rbac:role:read` | REQ-03 | 200 List<RoleDto> | 401,403 |
-| API-02 | POST | /auth/roles | JWT + permission `rbac:role:create` | REQ-03 | 201 RoleDto | 400,401,403 |
-| API-03 | PATCH | /auth/roles/{roleId} | JWT + permission `rbac:role:update` | REQ-03 | 200 RoleDto | 400,401,403,404 |
-| API-04 | DELETE | /auth/roles/{roleId} | JWT + permission `rbac:role:delete` | REQ-03, BR-04 | 204 | 400,401,403,404 |
-| API-05 | GET | /auth/permissions | JWT + permission `rbac:permission:read` | REQ-03 | 200 List<PermissionDto> | 401,403 |
-| API-06 | POST | /auth/users/{userId}/roles | JWT + permission `rbac:user:role:assign` | REQ-02 | 204 | 400,401,403,404 |
-| API-07 | DELETE | /auth/users/{userId}/roles/{roleId} | JWT + permission `rbac:user:role:revoke` | REQ-02 | 204 | 400,401,403,404 |
+| API-01 | GET | /auth/roles | JWT + permissão `rbac:role:read` | REQ-03 | 200 List<RoleDto> | 401,403 |
+| API-02 | POST | /auth/roles | JWT + permissão `rbac:role:create` | REQ-03 | 201 RoleDto | 400,401,403 |
+| API-03 | PATCH | /auth/roles/{roleId} | JWT + permissão `rbac:role:update` | REQ-03 | 200 RoleDto | 400,401,403,404 |
+| API-04 | DELETE | /auth/roles/{roleId} | JWT + permissão `rbac:role:delete` | REQ-03, BR-04 | 204 | 400,401,403,404 |
+| API-05 | GET | /auth/permissions | JWT + permissão `rbac:permission:read` | REQ-03 | 200 List<PermissionDto> | 401,403 |
+| API-06 | POST | /auth/permissions | JWT + permissão `rbac:permission:create` | REQ-03 | 201 PermissionDto | 400,401,403 |
+| API-07 | PATCH | /auth/permissions/{permissionId} | JWT + permissão `rbac:permission:update` | REQ-03 | 200 PermissionDto | 400,401,403,404 |
+| API-08 | DELETE | /auth/permissions/{permissionId} | JWT + permissão `rbac:permission:delete` | REQ-03 | 204 | 400,401,403,404 |
+| API-09 | POST | /auth/users/{userId}/roles | JWT + permissão `rbac:user:role:assign` | REQ-02 | 204 | 400,401,403,404 |
+| API-10 | DELETE | /auth/users/{userId}/roles/{roleId} | JWT + permissão `rbac:user:role:revoke` | REQ-02 | 204 | 400,401,403,404 |
+
+## 8.1 Contratos e payloads
+
+### `RoleDto`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | Guid | Identificador da role. |
+| `name` | string | Nome único (`snake-case`) utilizado internamente. |
+| `displayName` | string | Nome amigável exibido em UI. |
+| `description` | string? | Descrição opcional da responsabilidade. |
+| `isSystemRole` | bool | Indica proteção adicional conforme BR-04. |
+| `securityStamp` | string | Stamp para invalidação de tokens. |
+| `createdAt` | DateTimeOffset | Data de criação. |
+| `updatedAt` | DateTimeOffset | Última atualização. |
+| `permissions` | PermissionDto[] | Lista completa de permissões associadas. |
+
+### `PermissionDto`
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | Guid | Identificador da permissão. |
+| `name` | string | Código único no formato `dominio:recurso:acao`. |
+| `displayName` | string | Nome amigável. |
+| `description` | string? | Texto explicativo opcional. |
+| `createdAt` | DateTimeOffset | Data de criação. |
+
+### `POST /auth/roles`
+Requer permissão `rbac:role:create`.
+
+| Campo | Tipo | Obrigatório | Observações |
+|-------|------|-------------|-------------|
+| `name` | string | Sim | Lowercase, regex `^[a-z][a-z0-9-_]+$`. |
+| `displayName` | string | Sim | Nome exibido. |
+| `description` | string? | Não | Descrição opcional. |
+| `isSystemRole` | bool | Sim | Impede exclusão/acréscimo inválido de permissões obrigatórias. |
+| `permissions` | string[] | Sim | Lista de códigos de permissão a anexar. |
+
+### `PATCH /auth/roles/{roleId}`
+Requer permissão `rbac:role:update`.
+
+| Campo | Tipo | Obrigatório | Observações |
+|-------|------|-------------|-------------|
+| `displayName` | string | Sim | Nome exibido atualizado. |
+| `description` | string? | Não | Descrição opcional. |
+| `permissions` | string[] | Sim | Lista completa desejada (substitui a atual). |
+
+### `POST /auth/permissions`
+Requer permissão `rbac:permission:create`.
+
+| Campo | Tipo | Obrigatório | Observações |
+|-------|------|-------------|-------------|
+| `name` | string | Sim | Único, formato `dominio:recurso:acao`. |
+| `displayName` | string | Sim | Nome amigável. |
+| `description` | string? | Não | Texto explicativo opcional. |
+
+### `PATCH /auth/permissions/{permissionId}`
+Requer permissão `rbac:permission:update`.
+
+| Campo | Tipo | Obrigatório | Observações |
+|-------|------|-------------|-------------|
+| `displayName` | string | Sim | Nome amigável revisado. |
+| `description` | string? | Não | Descrição opcional. |
+
+### `POST /auth/users/{userId}/roles`
+Requer permissão `rbac:user:role:assign`.
+
+| Campo | Tipo | Obrigatório | Observações |
+|-------|------|-------------|-------------|
+| `roleId` | Guid | Sim | Role a ser atribuída; valida BR-04. |
+
+### `DELETE /auth/users/{userId}/roles/{roleId}`
+Requer permissão `rbac:user:role:revoke`.
+
+Sem payload (body vazio). A operação registra `RevokedAt` quando aplicável.
 
 # 9. Segurança & Performance
 - **Segurança:** Validar permissões antes da execução dos handlers, garantir rotação de `SecurityStamp` para invalidar tokens quando roles mudarem, e proteger endpoints administrativos com MFA opcional futuro.

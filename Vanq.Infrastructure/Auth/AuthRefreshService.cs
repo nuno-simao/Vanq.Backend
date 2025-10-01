@@ -2,6 +2,7 @@ using Vanq.Application.Abstractions.Auth;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Contracts.Auth;
+using Vanq.Infrastructure.Rbac;
 
 namespace Vanq.Infrastructure.Auth;
 
@@ -26,14 +27,15 @@ public sealed class AuthRefreshService : IAuthRefreshService
         try
         {
             var (newRefreshToken, _, userId, securityStamp) = await _refreshTokenService.ValidateAndRotateAsync(request.RefreshToken, cancellationToken);
-            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            var user = await _userRepository.GetByIdWithRolesAsync(userId, cancellationToken);
 
             if (user is null)
             {
                 return AuthResult<AuthResponseDto>.Failure(AuthError.InvalidRefreshToken, "User not found");
             }
 
-            var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, securityStamp);
+            var (roles, permissions, rolesStamp) = RbacTokenPayloadBuilder.Build(user);
+            var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, securityStamp, roles, permissions, rolesStamp);
 
             return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, newRefreshToken, expiresAtUtc));
         }

@@ -29,6 +29,33 @@ internal sealed class UserRepository : IUserRepository
         return await _dbContext.Users.FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public Task<User?> GetByEmailWithRolesAsync(string normalizedEmail, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(normalizedEmail);
+
+        return _dbContext.Users
+            .Include(user => user.Roles)
+                .ThenInclude(userRole => userRole.Role)
+                    .ThenInclude(role => role.Permissions)
+                        .ThenInclude(rolePermission => rolePermission.Permission)
+            .FirstOrDefaultAsync(user => user.Email == normalizedEmail, cancellationToken);
+    }
+
+    public Task<User?> GetByIdWithRolesAsync(Guid id, CancellationToken cancellationToken)
+    {
+        if (id == Guid.Empty)
+        {
+            return Task.FromResult<User?>(null);
+        }
+
+        return _dbContext.Users
+            .Include(user => user.Roles)
+                .ThenInclude(userRole => userRole.Role)
+                    .ThenInclude(role => role.Permissions)
+                        .ThenInclude(rolePermission => rolePermission.Permission)
+            .FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
+    }
+
     public async Task<bool> ExistsByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(normalizedEmail);
