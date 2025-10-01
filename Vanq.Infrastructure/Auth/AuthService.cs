@@ -58,6 +58,7 @@ public sealed class AuthService : IAuthService
 
     public async Task<AuthResult<AuthResponseDto>> RegisterAsync(RegisterUserDto request, CancellationToken cancellationToken)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var normalizedEmail = StringNormalizationUtils.NormalizeEmail(request.Email);
 
         var emailExists = await _userRepository.ExistsByEmailAsync(normalizedEmail, cancellationToken);
@@ -83,12 +84,15 @@ public sealed class AuthService : IAuthService
         var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
+        stopwatch.Stop();
+        _logger.LogPerformanceEvent("UserRegistration", stopwatch.ElapsedMilliseconds, threshold: 500);
         _logger.LogAuthEvent("UserRegistration", "success", userId: user.Id, email: normalizedEmail);
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
     }
 
     public async Task<AuthResult<AuthResponseDto>> LoginAsync(AuthRequestDto request, CancellationToken cancellationToken)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var normalizedEmail = StringNormalizationUtils.NormalizeEmail(request.Email);
         var user = await _userRepository.GetByEmailWithRolesAsync(normalizedEmail, cancellationToken);
 
@@ -120,6 +124,8 @@ public sealed class AuthService : IAuthService
         var (accessToken, expiresAtUtc) = _jwtTokenService.GenerateAccessToken(user.Id, user.Email, user.SecurityStamp, roles, permissions, rolesStamp);
         var (refreshToken, _) = await _refreshTokenService.IssueAsync(user.Id, user.SecurityStamp, cancellationToken);
 
+        stopwatch.Stop();
+        _logger.LogPerformanceEvent("UserLogin", stopwatch.ElapsedMilliseconds, threshold: 300);
         _logger.LogAuthEvent("UserLogin", "success", userId: user.Id, email: normalizedEmail);
         return AuthResult<AuthResponseDto>.Success(new AuthResponseDto(accessToken, refreshToken, expiresAtUtc));
     }

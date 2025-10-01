@@ -49,6 +49,7 @@ public class RefreshTokenService : IRefreshTokenService
 
     public async Task<(string NewPlainRefreshToken, DateTime ExpiresAtUtc, Guid UserId, string SecurityStamp)> ValidateAndRotateAsync(string plainRefreshToken, CancellationToken cancellationToken)
     {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         var now = _clock.UtcNow;
         var hash = RefreshTokenFactory.ComputeHash(plainRefreshToken);
 
@@ -89,6 +90,8 @@ public class RefreshTokenService : IRefreshTokenService
         _refreshTokenRepository.Update(token);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        stopwatch.Stop();
+        _logger.LogPerformanceEvent("RefreshTokenRotation", stopwatch.ElapsedMilliseconds, threshold: 200);
         _logger.LogDebug("Refresh token rotated for user {UserId}", user.Id);
         return (newPlain, newExpires, user.Id, user.SecurityStamp);
     }

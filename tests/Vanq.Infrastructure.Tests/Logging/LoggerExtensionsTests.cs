@@ -142,13 +142,13 @@ public class LoggerExtensionsTests
     }
 
     [Fact]
-    public void LogPerformanceEvent_ShouldLogAtInformationLevel_WhenBelowThreshold()
+    public void LogPerformanceEvent_ShouldLogAtDebugLevel_WhenBelowThreshold()
     {
         // Act
-        _logger.LogPerformanceEvent("DatabaseQuery", elapsedMilliseconds: 500, threshold: 1000);
+        _logger.LogPerformanceEvent("DatabaseQuery", elapsedMilliseconds: 500, threshold: 1000, details: "test query");
 
         // Assert
-        _logger.LastLogLevel.ShouldBe(LogLevel.Information);
+        _logger.LastLogLevel.ShouldBe(LogLevel.Debug);
         _logger.LastMessage.ShouldContain("500");
         _logger.LastMessage.ShouldContain("False"); // Not slow
     }
@@ -157,7 +157,7 @@ public class LoggerExtensionsTests
     public void LogPerformanceEvent_ShouldLogAtWarningLevel_WhenAboveThreshold()
     {
         // Act
-        _logger.LogPerformanceEvent("DatabaseQuery", elapsedMilliseconds: 1500, threshold: 1000);
+        _logger.LogPerformanceEvent("DatabaseQuery", elapsedMilliseconds: 1500, threshold: 1000, details: "slow query detected");
 
         // Assert
         _logger.LastLogLevel.ShouldBe(LogLevel.Warning);

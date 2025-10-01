@@ -136,17 +136,20 @@ public static class LoggerExtensions
         this ILogger logger,
         string operationName,
         long elapsedMilliseconds,
-        long? threshold = null)
+        long? threshold = null,
+        string? details = null)
     {
         var isSlow = threshold.HasValue && elapsedMilliseconds > threshold.Value;
-        var logLevel = isSlow ? LogLevel.Warning : LogLevel.Information;
+        var logLevel = isSlow ? LogLevel.Warning : LogLevel.Debug;
 
         logger.Log(
             logLevel,
-            "Performance: {Operation} | Duration: {ElapsedMs}ms | Slow: {IsSlow}",
+            "Performance: {Operation} | Duration: {ElapsedMs}ms | Threshold: {Threshold}ms | Slow: {IsSlow} | Details: {Details}",
             operationName,
             elapsedMilliseconds,
-            isSlow
+            threshold ?? 0,
+            isSlow,
+            details ?? "N/A"
         );
     }
 }
