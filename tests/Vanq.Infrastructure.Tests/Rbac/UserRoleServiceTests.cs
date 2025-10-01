@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Vanq.Application.Abstractions.FeatureFlags;
@@ -33,10 +33,10 @@ public class UserRoleServiceTests
         await service.AssignRoleAsync(user.Id, role.Id, executorId, CancellationToken.None);
 
         // Assert
-        featureFlagService.IsEnabledCallCount.Should().Be(1);
-        userRepository.UpdateCallCount.Should().Be(1);
-        unitOfWork.SaveChangesCallCount.Should().Be(1);
-        user.HasActiveRole(role.Id).Should().BeTrue();
+        featureFlagService.IsEnabledCallCount.ShouldBe(1);
+        userRepository.UpdateCallCount.ShouldBe(1);
+        unitOfWork.SaveChangesCallCount.ShouldBe(1);
+        user.HasActiveRole(role.Id).ShouldBeTrue();
     }
 
     [Fact]
@@ -57,10 +57,10 @@ public class UserRoleServiceTests
 
         await service.AssignRoleAsync(user.Id, role.Id, executorId, CancellationToken.None);
 
-        userRepository.UpdateCallCount.Should().Be(0);
-        unitOfWork.SaveChangesCallCount.Should().Be(0);
+        userRepository.UpdateCallCount.ShouldBe(0);
+        unitOfWork.SaveChangesCallCount.ShouldBe(0);
         user.Roles.Count(roleAssignment => roleAssignment.RoleId == role.Id && roleAssignment.IsActive)
-            .Should().Be(1);
+            .ShouldBe(1);
     }
 
     [Fact]
@@ -87,10 +87,10 @@ public class UserRoleServiceTests
 
         await service.RevokeRoleAsync(user.Id, primaryRole.Id, executorId, CancellationToken.None);
 
-        user.HasActiveRole(primaryRole.Id).Should().BeFalse();
-        user.HasActiveRole(defaultRole.Id).Should().BeTrue();
-        userRepository.UpdateCallCount.Should().Be(1);
-        unitOfWork.SaveChangesCallCount.Should().Be(1);
+        user.HasActiveRole(primaryRole.Id).ShouldBeFalse();
+        user.HasActiveRole(defaultRole.Id).ShouldBeTrue();
+        userRepository.UpdateCallCount.ShouldBe(1);
+        unitOfWork.SaveChangesCallCount.ShouldBe(1);
     }
 
     private static UserRoleService CreateService(
@@ -219,3 +219,4 @@ public class UserRoleServiceTests
             throw new NotSupportedException();
     }
 }
+

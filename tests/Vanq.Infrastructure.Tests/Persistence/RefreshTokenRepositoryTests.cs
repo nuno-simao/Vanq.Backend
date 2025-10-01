@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.EntityFrameworkCore;
 using Vanq.Domain.Entities;
 using Vanq.Infrastructure.Persistence;
@@ -27,8 +27,8 @@ public class RefreshTokenRepositoryTests
 
         var fetched = await repository.GetByHashAsync(hash, CancellationToken.None);
 
-        fetched.Should().NotBeNull();
-        fetched!.TokenHash.Should().Be(hash);
+        fetched.ShouldNotBeNull();
+        fetched!.TokenHash.ShouldBe(hash);
     }
 
     [Fact]
@@ -46,14 +46,14 @@ public class RefreshTokenRepositoryTests
         await context.SaveChangesAsync();
 
         var tracked = await repository.GetByUserAndHashAsync(userId, hash, CancellationToken.None, track: true);
-        tracked.Should().NotBeNull();
+        tracked.ShouldNotBeNull();
 
         tracked!.Revoke(nowUtc: now);
         repository.Update(tracked);
         await context.SaveChangesAsync();
 
         var refreshed = await repository.GetByUserAndHashAsync(userId, hash, CancellationToken.None);
-        refreshed!.RevokedAt.Should().NotBeNull();
+        refreshed!.RevokedAt.ShouldNotBeNull();
     }
 
     private static string ComputeHash(string token)
@@ -73,3 +73,4 @@ public class RefreshTokenRepositoryTests
         return new AppDbContext(options);
     }
 }
+

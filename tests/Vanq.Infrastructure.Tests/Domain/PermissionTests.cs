@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Vanq.Domain.Entities;
 using Xunit;
 
@@ -13,11 +13,11 @@ public class PermissionTests
 
         var permission = Permission.Create(" Admin:Dashboard:View ", "  View Dashboard  ", "  Allows viewing  ", timestamp);
 
-        permission.Id.Should().NotBe(Guid.Empty);
-        permission.Name.Should().Be("admin:dashboard:view");
-        permission.DisplayName.Should().Be("View Dashboard");
-        permission.Description.Should().Be("Allows viewing");
-        permission.CreatedAt.Should().Be(timestamp);
+        permission.Id.ShouldNotBe(Guid.Empty);
+        permission.Name.ShouldBe("admin:dashboard:view");
+        permission.DisplayName.ShouldBe("View Dashboard");
+        permission.Description.ShouldBe("Allows viewing");
+        permission.CreatedAt.ShouldBe(timestamp);
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class PermissionTests
 
         var permission = Permission.Create("analytics:report:view", "View Report", "   ", timestamp);
 
-        permission.Description.Should().BeNull();
+        permission.Description.ShouldBeNull();
     }
 
     [Theory]
@@ -43,7 +43,7 @@ public class PermissionTests
 
         Action act = () => Permission.Create(name, "display", null, timestamp);
 
-        act.Should().Throw<ArgumentException>();
+        Should.Throw<ArgumentException>(act);
     }
 
     [Fact]
@@ -53,6 +53,7 @@ public class PermissionTests
 
         Action act = () => Permission.Create("analytics:report:view", " ", null, timestamp);
 
-        act.Should().Throw<ArgumentException>();
+        Should.Throw<ArgumentException>(act);
     }
 }
+

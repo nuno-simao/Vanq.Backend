@@ -1,5 +1,5 @@
 using System.Reflection;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.Logging;
 using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
@@ -28,12 +28,13 @@ public class PermissionCheckerTests
         Func<Task> act = () => checker.EnsurePermissionAsync(userId, permission, CancellationToken.None);
 
         // Assert
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        await Should.ThrowAsync<UnauthorizedAccessException>(act);
 
-        logger.Entries.Should().ContainSingle(entry =>
-            entry.Level == LogLevel.Warning &&
-            entry.Message.Contains(userId.ToString(), StringComparison.OrdinalIgnoreCase) &&
-            entry.Message.Contains(permission, StringComparison.OrdinalIgnoreCase));
+        logger.Entries.Count.ShouldBe(1);
+        var entry = logger.Entries.Single();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.Message.ShouldContain(userId.ToString(), Case.Insensitive);
+        entry.Message.ShouldContain(permission, Case.Insensitive);
     }
 
     [Fact]
@@ -66,7 +67,7 @@ public class PermissionCheckerTests
 
         await checker.EnsurePermissionAsync(userId, permission, CancellationToken.None);
 
-        logger.Entries.Should().BeEmpty();
+        logger.Entries.ShouldBeEmpty();
     }
 
     private sealed class StubUserRepository : IUserRepository
@@ -150,3 +151,4 @@ public class PermissionCheckerTests
 
     private readonly record struct LogEntry(LogLevel Level, string Message);
 }
+

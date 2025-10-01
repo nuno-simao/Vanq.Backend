@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Hosting;
@@ -45,7 +45,7 @@ public class FeatureFlagServiceTests
         var isEnabled = await service.IsEnabledAsync("enabled-feature");
 
         // Assert
-        isEnabled.Should().BeTrue();
+        isEnabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -70,7 +70,7 @@ public class FeatureFlagServiceTests
         var isEnabled = await service.IsEnabledAsync("disabled-feature");
 
         // Assert
-        isEnabled.Should().BeFalse();
+        isEnabled.ShouldBeFalse();
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class FeatureFlagServiceTests
         var isEnabled = await service.IsEnabledAsync("nonexistent-feature");
 
         // Assert
-        isEnabled.Should().BeFalse();
+        isEnabled.ShouldBeFalse();
     }
 
     [Fact]
@@ -118,8 +118,8 @@ public class FeatureFlagServiceTests
         var isEnabled2 = await service.IsEnabledAsync("cached-feature");
 
         // Assert
-        isEnabled1.Should().BeTrue();
-        isEnabled2.Should().BeTrue(); // Still true from cache, not updated
+        isEnabled1.ShouldBeTrue();
+        isEnabled2.ShouldBeTrue(); // Still true from cache, not updated
     }
 
     [Fact]
@@ -134,7 +134,7 @@ public class FeatureFlagServiceTests
         var result = await service.GetFlagOrDefaultAsync("nonexistent", defaultValue: true);
 
         // Assert
-        result.Should().BeTrue();
+        result.ShouldBeTrue();
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class FeatureFlagServiceTests
         var result = await service.GetFlagOrDefaultAsync("existing-feature", defaultValue: true);
 
         // Assert
-        result.Should().BeFalse(); // Flag value takes precedence over default
+        result.ShouldBeFalse(); // Flag value takes precedence over default
     }
 
     [Fact]
@@ -182,13 +182,13 @@ public class FeatureFlagServiceTests
         var result = await service.CreateAsync(createDto, "admin@test.com");
 
         // Assert
-        result.Should().NotBeNull();
-        result.Key.Should().Be("new-feature");
-        result.IsEnabled.Should().BeTrue();
-        result.LastUpdatedBy.Should().Be("admin@test.com");
+        result.ShouldNotBeNull();
+        result.Key.ShouldBe("new-feature");
+        result.IsEnabled.ShouldBeTrue();
+        result.LastUpdatedBy.ShouldBe("admin@test.com");
 
         var dbFlag = await repository.GetByKeyAndEnvironmentAsync("new-feature", "Development", CancellationToken.None);
-        dbFlag.Should().NotBeNull();
+        dbFlag.ShouldNotBeNull();
     }
 
     [Fact]
@@ -249,14 +249,14 @@ public class FeatureFlagServiceTests
         var result = await service.UpdateAsync("update-feature", updateDto, "admin@test.com");
 
         // Assert
-        result.Should().NotBeNull();
-        result!.IsEnabled.Should().BeFalse();
-        result.Description.Should().Be("Updated");
-        result.LastUpdatedBy.Should().Be("admin@test.com");
+        result.ShouldNotBeNull();
+        result!.IsEnabled.ShouldBeFalse();
+        result.Description.ShouldBe("Updated");
+        result.LastUpdatedBy.ShouldBe("admin@test.com");
 
         // Verify cache was invalidated
         var newValue = await service.IsEnabledAsync("update-feature");
-        newValue.Should().BeFalse();
+        newValue.ShouldBeFalse();
     }
 
     [Fact]
@@ -281,15 +281,15 @@ public class FeatureFlagServiceTests
         var result1 = await service.ToggleAsync("toggle-feature", "admin@test.com");
 
         // Assert - Should be disabled now
-        result1.Should().NotBeNull();
-        result1!.IsEnabled.Should().BeFalse();
+        result1.ShouldNotBeNull();
+        result1!.IsEnabled.ShouldBeFalse();
 
         // Act - Second toggle
         var result2 = await service.ToggleAsync("toggle-feature", "admin@test.com");
 
         // Assert - Should be enabled again
-        result2.Should().NotBeNull();
-        result2!.IsEnabled.Should().BeTrue();
+        result2.ShouldNotBeNull();
+        result2!.IsEnabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class FeatureFlagServiceTests
         var allFlags = await service.GetAllAsync();
 
         // Assert
-        allFlags.Should().HaveCount(3);
+        allFlags.Count.ShouldBe(3);
     }
 
     [Fact]
@@ -337,8 +337,8 @@ public class FeatureFlagServiceTests
         var envFlags = await service.GetByEnvironmentAsync();
 
         // Assert
-        envFlags.Should().HaveCount(2);
-        envFlags.Should().AllSatisfy(f => f.Environment.Should().Be("Development"));
+        envFlags.Count.ShouldBe(2);
+        envFlags.ShouldAllBe(f => f.Environment == "Development");
     }
 
     private AppDbContext CreateContext()
@@ -398,3 +398,4 @@ public class FeatureFlagServiceTests
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
     }
 }
+

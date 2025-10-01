@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Microsoft.EntityFrameworkCore;
 using Vanq.Domain.Entities;
 using Vanq.Infrastructure.Persistence;
@@ -35,10 +35,10 @@ public class FeatureFlagRepositoryTests
             CancellationToken.None);
 
         // Assert
-        fetched.Should().NotBeNull();
-        fetched!.Key.Should().Be("test-feature");
-        fetched.Environment.Should().Be("Development");
-        fetched.IsEnabled.Should().BeTrue();
+        fetched.ShouldNotBeNull();
+        fetched!.Key.ShouldBe("test-feature");
+        fetched.Environment.ShouldBe("Development");
+        fetched.IsEnabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class FeatureFlagRepositoryTests
             CancellationToken.None);
 
         // Assert
-        fetched.Should().BeNull();
+        fetched.ShouldBeNull();
     }
 
     [Fact]
@@ -95,11 +95,11 @@ public class FeatureFlagRepositoryTests
             CancellationToken.None);
 
         // Assert
-        devFetched.Should().NotBeNull();
-        devFetched!.IsEnabled.Should().BeTrue();
+        devFetched.ShouldNotBeNull();
+        devFetched!.IsEnabled.ShouldBeTrue();
 
-        prodFetched.Should().NotBeNull();
-        prodFetched!.IsEnabled.Should().BeFalse();
+        prodFetched.ShouldNotBeNull();
+        prodFetched!.IsEnabled.ShouldBeFalse();
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class FeatureFlagRepositoryTests
             CancellationToken.None);
 
         // Assert
-        exists.Should().BeTrue();
+        exists.ShouldBeTrue();
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class FeatureFlagRepositoryTests
             CancellationToken.None);
 
         // Assert
-        exists.Should().BeFalse();
+        exists.ShouldBeFalse();
     }
 
     [Fact]
@@ -166,10 +166,10 @@ public class FeatureFlagRepositoryTests
         var devFlags = await repository.GetByEnvironmentAsync("Development", CancellationToken.None);
 
         // Assert
-        devFlags.Should().HaveCount(2);
-        devFlags.Should().AllSatisfy(f => f.Environment.Should().Be("Development"));
-        devFlags.Should().Contain(f => f.Key == "dev-feature-1");
-        devFlags.Should().Contain(f => f.Key == "dev-feature-2");
+        devFlags.Count.ShouldBe(2);
+        devFlags.ShouldAllBe(f => f.Environment == "Development");
+        devFlags.ShouldContain(f => f.Key == "dev-feature-1");
+        devFlags.ShouldContain(f => f.Key == "dev-feature-2");
     }
 
     [Fact]
@@ -212,10 +212,10 @@ public class FeatureFlagRepositoryTests
             "Development",
             CancellationToken.None);
 
-        updated.Should().NotBeNull();
-        updated!.IsEnabled.Should().BeFalse();
-        updated.Description.Should().Be("Updated description");
-        updated.LastUpdatedBy.Should().Be("new-user");
+        updated.ShouldNotBeNull();
+        updated!.IsEnabled.ShouldBeFalse();
+        updated.Description.ShouldBe("Updated description");
+        updated.LastUpdatedBy.ShouldBe("new-user");
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class FeatureFlagRepositoryTests
         var allFlags = await repository.GetAllAsync(CancellationToken.None);
 
         // Assert
-        allFlags.Should().HaveCount(3);
+        allFlags.Count.ShouldBe(3);
     }
 
     private static AppDbContext CreateContext()
@@ -250,3 +250,4 @@ public class FeatureFlagRepositoryTests
         return new AppDbContext(options);
     }
 }
+

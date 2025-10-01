@@ -1,4 +1,4 @@
-using FluentAssertions;
+using Shouldly;
 using Microsoft.EntityFrameworkCore;
 using Vanq.Domain.Entities;
 using Vanq.Infrastructure.Persistence;
@@ -21,12 +21,12 @@ public class UserRepositoryTests
         await context.SaveChangesAsync();
 
         var exists = await repository.ExistsByEmailAsync(user.Email, CancellationToken.None);
-        exists.Should().BeTrue();
+        exists.ShouldBeTrue();
 
         var fetched = await repository.GetByEmailAsync(user.Email, CancellationToken.None);
-        fetched.Should().NotBeNull();
-        fetched!.Email.Should().Be(user.Email);
-        fetched.PasswordHash.Should().Be("hashed-password");
+        fetched.ShouldNotBeNull();
+        fetched!.Email.ShouldBe(user.Email);
+        fetched.PasswordHash.ShouldBe("hashed-password");
     }
 
     [Fact]
@@ -37,7 +37,7 @@ public class UserRepositoryTests
 
         var result = await repository.GetByIdAsync(Guid.Empty, CancellationToken.None);
 
-        result.Should().BeNull();
+        result.ShouldBeNull();
     }
 
     private static AppDbContext CreateContext()
@@ -49,3 +49,4 @@ public class UserRepositoryTests
         return new AppDbContext(options);
     }
 }
+
