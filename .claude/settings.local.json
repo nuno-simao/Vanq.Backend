@@ -8,7 +8,9 @@
       "Bash(dotnet test:*)",
       "Bash(Enabled: {IsEnabled})",
       "Bash(Environment: {Environment})",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Bash(findstr:*)",
+      "Bash(Select-String -Pattern \"User\")"
     ],
     "deny": [],
     "ask": []
