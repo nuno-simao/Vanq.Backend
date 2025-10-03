@@ -15,6 +15,12 @@ public static class Endpoints
         // System parameters management
         apiRoute.MapSystemParametersEndpoints();
 
+        // Health checks (outside /api group)
+        app.MapHealthEndpoints();
+
+        // Telemetry ingestion
+        app.MapTelemetryEndpoints();
+
         return app;
     }
 }

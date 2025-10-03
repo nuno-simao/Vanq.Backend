@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- .NET Tool Configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>vanq</ToolCommandName>
+    <PackageId>Vanq.CLI</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Vanq Team</Authors>
+    <Description>CLI tool for managing Vanq.API backend (users, roles, permissions, feature flags, system parameters)</Description>
+    <PackageProjectUrl>https://github.com/vanq/vanq-backend</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vanq/vanq-backend</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>cli;admin;devops;vanq</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" />
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="System.Net.Http.Json" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" />
+  </ItemGroup>
+
+</Project>

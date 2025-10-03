@@ -13,4 +13,7 @@
     <Project Path="tests/Vanq.API.Tests/Vanq.API.Tests.csproj" />
     <Project Path="tests/Vanq.Infrastructure.Tests/Vanq.Infrastructure.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Vanq.CLI/Vanq.CLI.csproj" />
+  </Folder>
 </Solution>
