@@ -10,7 +10,9 @@
       "Bash(Environment: {Environment})",
       "Bash(dotnet sln:*)",
       "Bash(findstr:*)",
-      "Bash(Select-String -Pattern \"User\")"
+      "Bash(Select-String -Pattern \"User\")",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef migrations remove:*)"
     ],
     "deny": [],
     "ask": []

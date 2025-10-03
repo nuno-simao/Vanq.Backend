@@ -194,6 +194,8 @@ builder.Services
     var app = builder.Build();
 
     // Add global exception handling (must be first)
+    // Note: Feature flag 'error-middleware-enabled' can be used to disable this middleware
+    // The flag is checked inside the middleware itself for runtime control
     app.UseMiddleware<GlobalExceptionMiddleware>();
 
     // Add request logging middleware

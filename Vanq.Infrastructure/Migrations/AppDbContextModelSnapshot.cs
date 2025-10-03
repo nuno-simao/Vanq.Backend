@@ -69,7 +69,7 @@ namespace Vanq.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_FeatureFlags_Key_Environment");
 
-                    b.ToTable("FeatureFlags");
+                    b.ToTable("FeatureFlags", (string)null);
 
                     b.HasData(
                         new
@@ -531,7 +531,7 @@ namespace Vanq.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Permissions");
+                    b.ToTable("Permissions", (string)null);
                 });
 
             modelBuilder.Entity("Vanq.Domain.Entities.RefreshToken", b =>
@@ -573,7 +573,7 @@ namespace Vanq.Infrastructure.Migrations
                     b.HasIndex("UserId", "TokenHash")
                         .IsUnique();
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", (string)null);
                 });
 
             modelBuilder.Entity("Vanq.Domain.Entities.Role", b =>
@@ -615,7 +615,7 @@ namespace Vanq.Infrastructure.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("Vanq.Domain.Entities.RolePermission", b =>
@@ -669,7 +669,7 @@ namespace Vanq.Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Vanq.Domain.Entities.UserRole", b =>
