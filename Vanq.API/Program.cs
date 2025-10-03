@@ -7,6 +7,7 @@ using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Events;
 using Vanq.API.Endpoints;
+using Vanq.API.Extensions;
 using Vanq.API.Middleware;
 using Vanq.API.OpenApi;
 using Vanq.Application.Abstractions.Persistence;
@@ -80,6 +81,9 @@ try
     });
 
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// REQ-01, REQ-02: Add CORS services
+builder.Services.AddVanqCors(builder.Configuration, builder.Environment);
 
 builder.Services.AddOpenApi(options =>
 {
@@ -210,6 +214,12 @@ builder.Services
     });
 
     app.UseHttpsRedirection();
+
+    // REQ-02: Apply CORS before authentication (critical order)
+    app.UseVanqCors(builder.Configuration, builder.Environment);
+
+    // NFR-02: Add CORS logging middleware
+    app.UseCorsLogging();
 
     app.UseAuthentication();
     app.UseAuthorization();

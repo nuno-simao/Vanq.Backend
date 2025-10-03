@@ -48,6 +48,15 @@ internal sealed class FeatureFlagsSeeder
             cancellationToken: cancellationToken
         );
 
+        await SeedFlagIfNotExistsAsync(
+            key: "cors-relaxed",
+            environment: currentEnvironment,
+            isEnabled: false, // Disabled by default - use IsDevelopment() for relaxed mode
+            description: "Enables relaxed CORS policy (allow any origin) - use only for dev/staging",
+            lastUpdatedAt: now,
+            cancellationToken: cancellationToken
+        );
+
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(

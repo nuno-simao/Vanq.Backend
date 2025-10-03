@@ -361,6 +361,35 @@ dotnet test --filter "FullyQualifiedName~IsEnabledAsync_ShouldReturnTrue_WhenFla
 - **`Rbac:FeatureEnabled`**: Enable/disable RBAC enforcement
 - **`Rbac:DefaultRole`**: Role assigned to new users during registration
 - **`Rbac:Seed`**: Initial roles and permissions configuration
+- **`Cors:PolicyName`**: CORS policy name (default: `vanq-default-cors`)
+- **`Cors:AllowedOrigins`**: List of allowed origins (empty in Development = allow any)
+- **`Cors:AllowedMethods`**: HTTP methods allowed for CORS (default: GET, POST, PUT, PATCH, DELETE, OPTIONS)
+- **`Cors:AllowedHeaders`**: Request headers allowed for CORS (default: Content-Type, Authorization, Accept, etc.)
+- **`Cors:AllowCredentials`**: Enable credentials (cookies, Authorization header) (default: true)
+- **`Cors:MaxAgeSeconds`**: Preflight cache duration (default: 3600)
+
+### CORS Configuration
+
+The API supports CORS (Cross-Origin Resource Sharing) for web clients. See [docs/cors-configuration.md](docs/cors-configuration.md) for detailed configuration.
+
+**Key points:**
+- **Development**: Automatically allows any origin (no configuration needed)
+- **Production**: Only HTTPS origins configured in `AllowedOrigins` are allowed
+- **Feature Flag**: `cors-relaxed` can enable permissive mode (use sparingly!)
+- **Logging**: Blocked CORS requests are logged with structured data
+
+**Example Production Configuration:**
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://app.example.com",
+      "https://dashboard.example.com"
+    ],
+    "AllowCredentials": true
+  }
+}
+```
 
 ### Environment Detection
 
