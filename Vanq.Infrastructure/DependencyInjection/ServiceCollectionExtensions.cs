@@ -5,6 +5,7 @@ using Vanq.Application.Abstractions.Auth;
 using Vanq.Application.Abstractions.FeatureFlags;
 using Vanq.Application.Abstractions.Persistence;
 using Vanq.Application.Abstractions.Rbac;
+using Vanq.Application.Abstractions.SystemParameters;
 using Vanq.Application.Abstractions.Time;
 using Vanq.Application.Abstractions.Tokens;
 using Vanq.Application.Configuration;
@@ -17,6 +18,7 @@ using Vanq.Infrastructure.Persistence;
 using Vanq.Infrastructure.Persistence.Seeding;
 using Vanq.Infrastructure.Persistence.Repositories;
 using Vanq.Infrastructure.Rbac;
+using Vanq.Infrastructure.SystemParameters;
 
 namespace Vanq.Infrastructure.DependencyInjection;
 
@@ -37,12 +39,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IFeatureFlagRepository, FeatureFlagRepository>();
+        services.AddScoped<ISystemParameterRepository, SystemParameterRepository>();
         services.AddScoped<RbacSeeder>();
         services.AddScoped<FeatureFlagsSeeder>();
 
         // Feature Flags service (unified system)
         services.AddMemoryCache();
         services.AddScoped<IFeatureFlagService, FeatureFlagService>();
+
+        // System Parameters service
+        services.AddScoped<ISystemParameterService, SystemParameterService>();
         
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IPermissionService, PermissionService>();

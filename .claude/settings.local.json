@@ -13,7 +13,9 @@
       "Bash(Select-String -Pattern \"User\")",
       "Bash(dotnet ef migrations add:*)",
       "Bash(dotnet ef migrations remove:*)",
-      "Bash(dotnet run:*)"
+      "Bash(dotnet run:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

@@ -17,6 +17,7 @@ public class AppDbContext : DbContext, IUnitOfWork
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+    public DbSet<SystemParameter> SystemParameters => Set<SystemParameter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

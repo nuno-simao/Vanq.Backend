@@ -8,10 +8,13 @@ public static class Endpoints
 
         // Authentication management
         apiRoute.MapAuthEndpoints();
-        
+
         // Feature flags management
         apiRoute.MapFeatureFlagsEndpoints();
-        
+
+        // System parameters management
+        apiRoute.MapSystemParametersEndpoints();
+
         return app;
     }
 }
